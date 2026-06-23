@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+const { contextBridge, ipcRenderer } = require('electron')
 
 // 暴露给渲染进程的受限 API
 contextBridge.exposeInMainWorld('electronAPI', {

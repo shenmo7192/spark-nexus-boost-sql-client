@@ -1,16 +1,14 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import fs from 'fs'
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
+const { join } = require('path')
+const fs = require('fs')
 
-import * as database from './ipc/database.js'
-import * as query from './ipc/query.js'
-import * as hypothesis from './ipc/hypothesis.js'
-import * as exportIpc from './ipc/export.js'
-import { getDataDir, setDataDir, ensureDirs } from './utils/paths.js'
+const appPath = app.getAppPath()
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const database = require('./ipc/database')
+const query = require('./ipc/query')
+const hypothesis = require('./ipc/hypothesis')
+const exportIpc = require('./ipc/export')
+const { getDataDir, ensureDirs } = require('./utils/paths')
 
 let mainWindow = null
 
@@ -22,7 +20,7 @@ function createWindow() {
     minHeight: 700,
     title: '星火汇速SQL客户端 - Spark NB SQL',
     webPreferences: {
-      preload: join(__dirname, '../dist-electron/preload/preload.js'),
+      preload: join(appPath, 'dist-electron/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -37,7 +35,8 @@ function createWindow() {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
     mainWindow.webContents.openDevTools()
   } else {
-    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
+    mainWindow.loadFile(join(appPath, 'dist/index.html'))
+
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -46,6 +45,17 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // 监听 preload 错误
+  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+    console.error('Preload script error:', preloadPath, error)
+  })
+
+  // 监听渲染进程控制台消息
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    const levels = ['verbose', 'info', 'warning', 'error']
+    console.log(`[Renderer ${levels[level] || level}]:`, message)
   })
 }
 
@@ -81,7 +91,8 @@ ipcMain.handle('app:selectDataDir', async () => {
   })
   if (!result.canceled && result.filePaths.length > 0) {
     const newDir = result.filePaths[0]
-    await setDataDir(newDir)
+    const { setDataDir } = require('./utils/paths')
+    setDataDir(newDir)
     await ensureDirs()
     return { success: true, dataDir: newDir }
   }
@@ -135,7 +146,8 @@ ipcMain.handle('hypothesis:params', () => hypothesis.getParamsDict())
 
 // 打开导出目录
 ipcMain.handle('shell:openExportsDir', () => {
-  const exportsDir = join(getDataDir(), 'exports')
+  const { getExportDir } = require('./utils/paths')
+  const exportsDir = getExportDir()
   if (fs.existsSync(exportsDir)) {
     shell.openPath(exportsDir)
   }

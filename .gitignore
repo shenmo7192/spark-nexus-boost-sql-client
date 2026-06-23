@@ -24,9 +24,6 @@ release
 *.sln
 *.sw?
 
-# Data
-data/databases/*.db
-data/uploads/*
-data/exports/*
-!data/uploads/.gitkeep
-!data/exports/.gitkeep
+# Electron user data (runtime generated)
+userData/
+*.db

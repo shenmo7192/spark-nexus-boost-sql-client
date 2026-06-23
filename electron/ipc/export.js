@@ -1,13 +1,13 @@
-import ExcelJS from 'exceljs'
-import fs from 'fs'
-import { join } from 'path'
-import { getExportDir } from '../utils/paths.js'
+const ExcelJS = require('exceljs')
+const fs = require('fs')
+const { join } = require('path')
+const { getExportDir } = require('../utils/paths')
 
 /**
  * 导出查询结果到 Excel
  * options: { results: [], exportConfig?: { filename, path, sheetNames } }
  */
-export async function exportQueryResults(options) {
+async function exportQueryResults(options) {
   const { results, exportConfig = {} } = options
 
   if (!results || results.length === 0) {
@@ -109,3 +109,5 @@ export async function exportQueryResults(options) {
     return { success: false, error: error.message }
   }
 }
+
+module.exports = { exportQueryResults }

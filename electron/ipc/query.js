@@ -1,9 +1,9 @@
-import Database from 'better-sqlite3'
-import { getDbPath } from '../utils/paths.js'
-import { appStore } from '../utils/store.js'
-import { getScenario } from './hypothesis.js'
-import fs from 'fs'
+const Database = require('better-sqlite3')
+const fs = require('fs')
 
+const { getDbPath } = require('../utils/paths')
+const { appStore } = require('../utils/store')
+const { getScenario } = require('./hypothesis')
 
 const CURRENT_DB_KEY = 'currentDatabase'
 
@@ -118,7 +118,7 @@ function executeSingle(dbPath, sql, page = 1, pageSize = 100) {
  * 执行 SQL 查询
  * options: { sql, dbName?, scenarioId?, page?, pageSize? }
  */
-export function runQuery(options) {
+function runQuery(options) {
   const { sql, scenarioId, page = 1, pageSize = 100 } = options
   let dbName = options.dbName
 
@@ -191,3 +191,4 @@ export function runQuery(options) {
   return resp
 }
 
+module.exports = { runQuery }

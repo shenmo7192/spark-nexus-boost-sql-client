@@ -1,7 +1,7 @@
-import fs from 'fs'
-import { getConfigPath } from '../utils/paths.js'
-import { appStore } from '../utils/store.js'
-import { generateId } from '../utils/paths.js'
+const fs = require('fs')
+const { getConfigPath } = require('../utils/paths')
+const { appStore } = require('../utils/store')
+const { generateId } = require('../utils/paths')
 
 const DEFAULT_SCENARIOS = [
   {
@@ -67,14 +67,14 @@ function saveConfig(config) {
 /**
  * 导出 store 实例供其他模块使用
  */
-export function getStore() {
+function getStore() {
   return appStore
 }
 
 /**
  * 列出所有方案
  */
-export function listScenarios() {
+function listScenarios() {
   const config = loadConfig()
   return config.scenarios
 }
@@ -82,7 +82,7 @@ export function listScenarios() {
 /**
  * 获取单个方案
  */
-export function getScenario(id) {
+function getScenario(id) {
   const config = loadConfig()
   return config.scenarios.find(s => s.id === id) || null
 }
@@ -90,7 +90,7 @@ export function getScenario(id) {
 /**
  * 创建方案
  */
-export function createScenario(scenario) {
+function createScenario(scenario) {
   const config = loadConfig()
   const newScenario = {
     id: scenario.id || generateId('scenario'),
@@ -106,7 +106,7 @@ export function createScenario(scenario) {
 /**
  * 更新方案
  */
-export function updateScenario(id, updates) {
+function updateScenario(id, updates) {
   const config = loadConfig()
   const idx = config.scenarios.findIndex(s => s.id === id)
   if (idx === -1) return null
@@ -124,7 +124,7 @@ export function updateScenario(id, updates) {
 /**
  * 删除方案
  */
-export function deleteScenario(id) {
+function deleteScenario(id) {
   const config = loadConfig()
   config.scenarios = config.scenarios.filter(s => s.id !== id)
   saveConfig(config)
@@ -134,7 +134,7 @@ export function deleteScenario(id) {
 /**
  * 对比多套方案
  */
-export function compareScenarios(ids) {
+function compareScenarios(ids) {
   const config = loadConfig()
   const selected = config.scenarios.filter(s => ids.includes(s.id))
 
@@ -161,7 +161,7 @@ export function compareScenarios(ids) {
 /**
  * 获取所有方案参数合并字典（用于 SQL 编辑器提示）
  */
-export function getParamsDict() {
+function getParamsDict() {
   const config = loadConfig()
   const dict = {}
   for (const s of config.scenarios) {
@@ -173,4 +173,15 @@ export function getParamsDict() {
     }
   }
   return dict
+}
+
+module.exports = {
+  getStore,
+  listScenarios,
+  getScenario,
+  createScenario,
+  updateScenario,
+  deleteScenario,
+  compareScenarios,
+  getParamsDict
 }

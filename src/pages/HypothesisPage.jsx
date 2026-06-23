@@ -134,7 +134,7 @@ export default function HypothesisPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-surface-800">假设参数</h1>
-          <p className="text-sm text-surface-500 mt-0.5">管理多套业务假设方案，在 SQL 中使用 {{参数名}} 引用</p>
+          <p className="text-sm text-surface-500 mt-0.5">管理多套业务假设方案，在 SQL 中使用 {'{{参数名}}'} 引用</p>
         </div>
         <button onClick={handleCreate} className="btn-primary">
           <Plus className="w-4 h-4" />

@@ -1,17 +1,16 @@
-import { app } from 'electron'
-import { join } from 'path'
-import fs from 'fs'
-import Store from 'electron-store'
+const { app } = require('electron')
+const { join } = require('path')
+const fs = require('fs')
+const appConfig = require('./config')
 
-const store = new Store({ name: 'spark-nb-sql-settings' })
 const DATA_DIR_KEY = 'dataDir'
 
 /**
  * 获取用户数据目录
  * 默认使用 app.getPath('userData')/spark-nb-sql
  */
-export function getDataDir() {
-  const configured = store.get(DATA_DIR_KEY)
+function getDataDir() {
+  const configured = appConfig.get(DATA_DIR_KEY)
   if (configured && fs.existsSync(configured)) {
     return configured
   }
@@ -21,37 +20,37 @@ export function getDataDir() {
 /**
  * 设置用户数据目录
  */
-export function setDataDir(dir) {
-  store.set(DATA_DIR_KEY, dir)
+function setDataDir(dir) {
+  appConfig.set(DATA_DIR_KEY, dir)
 }
 
 /**
  * 获取各子目录
  */
-export function getDbDir() {
+function getDbDir() {
   return join(getDataDir(), 'databases')
 }
 
-export function getDbPath(dbName) {
+function getDbPath(dbName) {
   return join(getDbDir(), dbName)
 }
 
-export function getUploadDir() {
+function getUploadDir() {
   return join(getDataDir(), 'uploads')
 }
 
-export function getExportDir() {
+function getExportDir() {
   return join(getDataDir(), 'exports')
 }
 
-export function getConfigPath() {
+function getConfigPath() {
   return join(getDataDir(), 'config_hypothesis.json')
 }
 
 /**
  * 确保所有子目录存在
  */
-export async function ensureDirs() {
+async function ensureDirs() {
   const dirs = [getDataDir(), getDbDir(), getUploadDir(), getExportDir()]
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {
@@ -63,7 +62,7 @@ export async function ensureDirs() {
 /**
  * 格式化文件大小
  */
-export function formatSize(sizeBytes) {
+function formatSize(sizeBytes) {
   if (sizeBytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   let i = 0
@@ -77,13 +76,27 @@ export function formatSize(sizeBytes) {
 /**
  * 生成唯一 ID
  */
-export function generateId(prefix = 'id') {
+function generateId(prefix = 'id') {
   return `${prefix}_${Math.random().toString(36).substring(2, 10)}_${Date.now().toString(36)}`
 }
 
 /**
  * 安全文件名：替换非法字符
  */
-export function sanitizeFilename(name) {
+function sanitizeFilename(name) {
   return name.replace(/[\\/:*?"<>|]/g, '_').trim()
+}
+
+module.exports = {
+  getDataDir,
+  setDataDir,
+  getDbDir,
+  getDbPath,
+  getUploadDir,
+  getExportDir,
+  getConfigPath,
+  ensureDirs,
+  formatSize,
+  generateId,
+  sanitizeFilename
 }

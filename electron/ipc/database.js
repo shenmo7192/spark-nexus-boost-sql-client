@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3'
-import xlsx from 'xlsx'
-import { join, basename, extname } from 'path'
-import fs from 'fs'
+const Database = require('better-sqlite3')
+const xlsx = require('xlsx')
+const { join, basename, extname } = require('path')
+const fs = require('fs')
 
-import { getDbPath, getDbDir, getUploadDir, formatSize, sanitizeFilename } from '../utils/paths.js'
-import { appStore } from '../utils/store.js'
+const { getDbPath, getDbDir, getUploadDir, formatSize, sanitizeFilename } = require('../utils/paths')
+const { appStore } = require('../utils/store')
 
 const CURRENT_DB_KEY = 'currentDatabase'
 const EXCEL_EXTENSIONS = ['.xlsx', '.xls', '.xlsm']
@@ -40,7 +40,7 @@ function dedupeColumnNames(names) {
 /**
  * 列出所有数据库
  */
-export function listDatabases() {
+function listDatabases() {
   const dbDir = getDbDir()
   if (!fs.existsSync(dbDir)) return []
 
@@ -69,7 +69,7 @@ export function listDatabases() {
 /**
  * 获取数据库表信息
  */
-export function getDatabaseInfo(dbName) {
+function getDatabaseInfo(dbName) {
   const dbPath = getDbPath(dbName)
   if (!fs.existsSync(dbPath)) {
     throw new Error('数据库不存在')
@@ -102,7 +102,7 @@ export function getDatabaseInfo(dbName) {
 /**
  * 预览表数据
  */
-export function getTablePreview(dbName, tableName, limit = 20) {
+function getTablePreview(dbName, tableName, limit = 20) {
   const dbPath = getDbPath(dbName)
   if (!fs.existsSync(dbPath)) {
     throw new Error('数据库不存在')
@@ -129,14 +129,13 @@ export function getTablePreview(dbName, tableName, limit = 20) {
 /**
  * 删除数据库
  */
-export function deleteDatabase(dbName) {
+function deleteDatabase(dbName) {
   const dbPath = getDbPath(dbName)
   if (fs.existsSync(dbPath)) {
     fs.unlinkSync(dbPath)
   }
-  const store = appStore
-  if (store.get(CURRENT_DB_KEY) === dbName) {
-    store.delete(CURRENT_DB_KEY)
+  if (appStore.get(CURRENT_DB_KEY) === dbName) {
+    appStore.delete(CURRENT_DB_KEY)
   }
   return { success: true }
 }
@@ -144,27 +143,25 @@ export function deleteDatabase(dbName) {
 /**
  * 设置/获取当前数据库
  */
-export function setCurrentDatabase(dbName) {
-  const store = appStore
+function setCurrentDatabase(dbName) {
   if (!dbName) {
-    store.delete(CURRENT_DB_KEY)
+    appStore.delete(CURRENT_DB_KEY)
     return { success: true }
   }
   const dbPath = getDbPath(dbName)
   if (!fs.existsSync(dbPath)) {
     throw new Error('数据库不存在')
   }
-  store.set(CURRENT_DB_KEY, dbName)
+  appStore.set(CURRENT_DB_KEY, dbName)
   return { success: true, dbName }
 }
 
-export function getCurrentDatabase() {
-  const store = appStore
-  const dbName = store.get(CURRENT_DB_KEY, '')
+function getCurrentDatabase() {
+  const dbName = appStore.get(CURRENT_DB_KEY, '')
   if (dbName) {
     const dbPath = getDbPath(dbName)
     if (fs.existsSync(dbPath)) return { dbName }
-    store.delete(CURRENT_DB_KEY)
+    appStore.delete(CURRENT_DB_KEY)
   }
   return { dbName: '' }
 }
@@ -172,7 +169,7 @@ export function getCurrentDatabase() {
 /**
  * 导入 Excel 文件到 SQLite
  */
-export function importExcelFiles(filePaths) {
+function importExcelFiles(filePaths) {
   const results = []
   for (const filePath of filePaths) {
     try {
@@ -270,4 +267,14 @@ export function importExcelFiles(filePaths) {
   }
 
   return { success: true, results }
+}
+
+module.exports = {
+  listDatabases,
+  getDatabaseInfo,
+  getTablePreview,
+  deleteDatabase,
+  setCurrentDatabase,
+  getCurrentDatabase,
+  importExcelFiles
 }

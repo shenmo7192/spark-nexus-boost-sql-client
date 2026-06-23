@@ -11,7 +11,7 @@ export default function Header() {
         setDataDir(result.dataDir)
         addToast(`数据目录已切换到: ${result.dataDir}`, 'success')
         // 刷新数据库列表
-        const { databases } = await window.electronAPI.listDatabases()
+        const databases = await window.electronAPI.listDatabases()
         useAppStore.getState().setDatabases(databases)
       }
     } catch (error) {
@@ -61,6 +61,7 @@ export default function Header() {
         </button>
 
         <button
+          onClick={() => addToast(`${appInfo.name} v${appInfo.version} | 数据目录: ${dataDir || '默认'}`, 'info')}
           className="btn-ghost text-surface-300 hover:text-white hover:bg-surface-800"
           title="设置"
         >

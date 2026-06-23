@@ -3,6 +3,8 @@ import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { keymap } from '@codemirror/view'
+import { autocompletion, acceptCompletion } from '@codemirror/autocomplete'
+import { Prec } from '@codemirror/state'
 import {
   Play, Save, FolderOpen, Trash2, BarChart3, Download,
   ChevronLeft, ChevronRight, History, Database, FileSpreadsheet
@@ -55,6 +57,48 @@ export default function SqlPage() {
   const [chartConfig, setChartConfig] = useState({ type: 'bar', xColumn: '', yColumn: '' })
   const editorRef = useRef(null)
   const executeRef = useRef(() => {})
+
+  const handleExecute = async (gotoPage = 1) => {
+    if (!sqlText.trim()) {
+      addToast('请输入 SQL 语句', 'warning')
+      return
+    }
+    if (!currentDb) {
+      addToast('请先选择一个数据库', 'warning')
+      return
+    }
+
+    setIsExecuting(true)
+    setPage(gotoPage)
+    try {
+      const result = await window.electronAPI.runQuery({
+        sql: sqlText,
+        dbName: currentDb,
+        scenarioId: selectedScenario || undefined,
+        page: gotoPage,
+        pageSize
+      })
+      setQueryResult(result)
+      setActiveResultIndex(0)
+
+      // 保存历史
+      const newHistory = [{ sql: sqlText, time: new Date().toISOString() }, ...history]
+      const updatedHistory = newHistory.slice(0, MAX_HISTORY)
+      setHistory(updatedHistory)
+      saveHistory(updatedHistory)
+
+      if (!result.success) {
+        addToast('SQL 执行失败: ' + result.error, 'error')
+      } else {
+        addToast('SQL 执行成功', 'success')
+      }
+    } catch (error) {
+      addToast('执行失败: ' + error.message, 'error')
+    } finally {
+      setIsExecuting(false)
+    }
+  }
+
   useEffect(() => {
     executeRef.current = () => handleExecute(1)
   }, [handleExecute])
@@ -108,47 +152,6 @@ export default function SqlPage() {
 
   const saveTemplates = (items) => {
     localStorage.setItem('spark_nb_sql_templates', JSON.stringify(items))
-  }
-
-  const handleExecute = async (gotoPage = 1) => {
-    if (!sqlText.trim()) {
-      addToast('请输入 SQL 语句', 'warning')
-      return
-    }
-    if (!currentDb) {
-      addToast('请先选择一个数据库', 'warning')
-      return
-    }
-
-    setIsExecuting(true)
-    setPage(gotoPage)
-    try {
-      const result = await window.electronAPI.runQuery({
-        sql: sqlText,
-        dbName: currentDb,
-        scenarioId: selectedScenario || undefined,
-        page: gotoPage,
-        pageSize
-      })
-      setQueryResult(result)
-      setActiveResultIndex(0)
-
-      // 保存历史
-      const newHistory = [{ sql: sqlText, time: new Date().toISOString() }, ...history]
-      const updatedHistory = newHistory.slice(0, MAX_HISTORY)
-      setHistory(updatedHistory)
-      saveHistory(updatedHistory)
-
-      if (!result.success) {
-        addToast('SQL 执行失败: ' + result.error, 'error')
-      } else {
-        addToast('SQL 执行成功', 'success')
-      }
-    } catch (error) {
-      addToast('执行失败: ' + error.message, 'error')
-    } finally {
-      setIsExecuting(false)
-    }
   }
 
   const handleExport = async () => {
