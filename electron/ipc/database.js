@@ -3,7 +3,7 @@ import xlsx from 'xlsx'
 import { join, basename, extname } from 'path'
 import fs from 'fs'
 
-import { getDbDir, getUploadDir, formatSize, sanitizeFilename } from '../utils/paths.js'
+import { getDbPath, getDbDir, getUploadDir, formatSize, sanitizeFilename } from '../utils/paths.js'
 import { appStore } from '../utils/store.js'
 
 const CURRENT_DB_KEY = 'currentDatabase'
@@ -12,10 +12,6 @@ const EXCEL_EXTENSIONS = ['.xlsx', '.xls', '.xlsm']
 function isExcelFile(filename) {
   const ext = extname(filename).toLowerCase()
   return EXCEL_EXTENSIONS.includes(ext)
-}
-
-function getDbPath(dbName) {
-  return join(getDbDir(), dbName)
 }
 
 function cleanColumnName(name) {

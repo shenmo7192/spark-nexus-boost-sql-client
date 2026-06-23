@@ -32,6 +32,10 @@ export function getDbDir() {
   return join(getDataDir(), 'databases')
 }
 
+export function getDbPath(dbName) {
+  return join(getDbDir(), dbName)
+}
+
 export function getUploadDir() {
   return join(getDataDir(), 'uploads')
 }

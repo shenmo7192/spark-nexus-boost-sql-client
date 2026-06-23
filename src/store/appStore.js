@@ -8,6 +8,7 @@ export const useAppStore = create((set, get) => ({
     fullNameEn: 'Spark Nexus Boost SQL',
     version: '1.0.0'
   },
+  setAppInfo: (appInfo) => set({ appInfo }),
 
   // 数据目录
   dataDir: '',
