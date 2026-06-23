@@ -1,0 +1,100 @@
+{
+  "name": "spark-nexus-boost-sql-client",
+  "version": "1.0.0",
+  "description": "星火汇速 SQL 客户端 - Spark NB SQL (Spark Nexus Boost SQL)",
+  "main": "dist-electron/main/main.js",
+  "author": "Spark Nexus Boost",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:icons": "node scripts/generate-icons.mjs",
+    "check:offline": "node scripts/check-offline.mjs",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@codemirror/lang-sql": "^6.7.4",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/view": "^6.28.4",
+    "@uiw/react-codemirror": "^4.23.0",
+    "better-sqlite3": "^11.1.2",
+    "chart.js": "^4.4.3",
+    "clsx": "^2.1.1",
+    "electron-store": "^10.0.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.24.0",
+    "tailwind-merge": "^2.3.0",
+    "xlsx": "^0.18.5",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "electron": "^31.2.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.39",
+    "sharp": "^0.33.4",
+    "tailwindcss": "^3.4.6",
+    "vite": "^5.3.3",
+    "vite-plugin-electron": "^0.28.7",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "build": {
+    "appId": "com.sparknexusboost.sqlclient",
+    "productName": "星火汇速SQL客户端",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "build/**/*"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icons",
+      "category": "Office",
+      "maintainer": "Spark Nexus Boost"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "星火汇速SQL客户端"
+    }
+  }
+}

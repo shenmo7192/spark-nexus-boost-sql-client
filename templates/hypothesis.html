@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+{% block title %}SQL_NB - 假设参数管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-3"><i class="bi bi-sliders me-2"></i>假设参数管理</h4>
+        <p class="text-muted small">管理多套关键假设方案，在SQL查询中使用 <code>{% raw %}{{参数名}}{% endraw %}</code> 引用参数，切换方案自动重算</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 左侧：方案列表 -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list me-1"></i>假设方案</span>
+                <button class="btn btn-primary btn-tool" onclick="createScenario()">
+                    <i class="bi bi-plus-lg"></i> 新建方案
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div id="scenarioList" class="list-group list-group-flush">
+                    <div class="text-center text-muted py-3">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：方案详情 -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-gear me-1"></i>参数详情</span>
+                <div>
+                    <button class="btn btn-outline-primary btn-tool" onclick="duplicateScenario()">
+                        <i class="bi bi-copy"></i> 复制
+                    </button>
+                    <button class="btn btn-danger btn-tool" onclick="deleteScenario()">
+                        <i class="bi bi-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="scenarioDetail">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-hand-index" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                        请从左侧选择一个假设方案
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案对比 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-arrow-left-right me-1"></i>方案对比
+            </div>
+            <div class="card-body" id="comparisonArea">
+                <div class="row g-2 mb-3" id="compareCheckboxes">
+                    <!-- 由JS填充 -->
+                </div>
+                <button class="btn btn-outline-info btn-tool" onclick="compareScenarios()">
+                    <i class="bi bi-arrow-left-right"></i> 对比选中方案
+                </button>
+                <div id="comparisonResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑方案模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑假设方案</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label class="form-label">方案名称</label>
+                    <input type="text" class="form-control" id="editName" placeholder="如: 基准方案">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">方案描述</label>
+                    <textarea class="form-control" id="editDesc" rows="2" placeholder="简要描述该方案的假设条件"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">参数列表</label>
+                    <p class="text-muted small mb-2">在SQL中使用 <code>{% raw %}{{参数名}}{% endraw %}</code> 引用参数</p>
+                    <div id="paramList">
+                        <!-- 由JS动态生成 -->
+                    </div>
+                    <button class="btn btn-outline-success btn-sm mt-1" onclick="addParamField()">
+                        <i class="bi bi-plus"></i> 添加参数
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveScenario()">保存方案</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentScenarioId = null;
+    let allScenarios = [];
+    let editModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadScenarios();
+        editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    });
+
+    // ============ 加载方案 ============
+    async function loadScenarios() {
+        try {
+            const resp = await fetch('/api/hypothesis/scenarios');
+            const data = await resp.json();
+            allScenarios = data.scenarios || [];
+            renderScenarioList();
+            renderCompareCheckboxes();
+            if (allScenarios.length > 0) {
+                showScenarioDetail(allScenarios[0].id);
+            }
+        } catch(e) {
+            document.getElementById('scenarioList').innerHTML =
+                '<div class="text-danger py-3 text-center">加载失败</div>';
+        }
+    }
+
+    function renderScenarioList() {
+        const container = document.getElementById('scenarioList');
+        if (allScenarios.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">暂无方案，点击上方新建</div>';
+            return;
+        }
+        let html = '';
+        allScenarios.forEach(s => {
+            const active = s.id === currentScenarioId ? 'active' : '';
+            const paramCount = Object.keys(s.params || {}).length;
+            html += `<div class="list-group-item list-group-item-action ${active}" style="cursor:pointer;"
+                onclick="showScenarioDetail('${s.id}')">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-gear me-1"></i>
+                        <strong>${escapeHtml(s.name)}</strong>
+                        <span class="badge bg-secondary ms-1">${paramCount}参数</span>
+                    </div>
+                    <small class="text-muted">${s.id}</small>
+                </div>
+                ${s.description ? `<small class="text-muted">${escapeHtml(s.description)}</small>` : ''}
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderCompareCheckboxes() {
+        const container = document.getElementById('compareCheckboxes');
+        if (allScenarios.length === 0) {
+            container.innerHTML = '<div class="text-muted small">暂无方案可对比</div>';
+            return;
+        }
+        let html = '';
+        allScenarios.forEach(s => {
+            html += `<div class="col-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${s.id}" id="cmp_${s.id}">
+                    <label class="form-check-label small" for="cmp_${s.id}">${escapeHtml(s.name)}</label>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    // ============ 显示方案详情 ============
+    function showScenarioDetail(id) {
+        currentScenarioId = id;
+        renderScenarioList();
+
+        const scenario = allScenarios.find(s => s.id === id);
+        if (!scenario) return;
+
+        const params = scenario.params || {};
+        let html = `
+            <div class="mb-3">
+                <label class="text-muted small">方案名称</label>
+                <h5>${escapeHtml(scenario.name)}</h5>
+            </div>
+            ${scenario.description ? `
+            <div class="mb-3">
+                <label class="text-muted small">描述</label>
+                <p>${escapeHtml(scenario.description)}</p>
+            </div>` : ''}
+            <div class="mb-2">
+                <label class="text-muted small">参数列表</label>
+            </div>
+            <div class="row">`;
+
+        if (Object.keys(params).length === 0) {
+            html += '<div class="col-12 text-muted small">暂无参数</div>';
+        } else {
+            for (const [key, value] of Object.entries(params)) {
+                const displayVal = typeof value === 'number' ? value : String(value);
+                html += `
+                    <div class="col-6 mb-2">
+                        <div class="param-card">
+                            <div class="param-name"><code>${escapeHtml(key)}</code></div>
+                            <div class="param-value">${escapeHtml(displayVal)}</div>
+                        </div>
+                    </div>`;
+            }
+        }
+        html += '</div>';
+
+        html += `
+            <div class="mt-2">
+                <button class="btn btn-outline-primary btn-tool" onclick="editScenario('${id}')">
+                    <i class="bi bi-pencil"></i> 编辑
+                </button>
+            </div>`;
+
+        document.getElementById('scenarioDetail').innerHTML = html;
+    }
+
+    // ============ 新建/编辑 ============
+    function createScenario() {
+        document.getElementById('editId').value = '';
+        document.getElementById('editName').value = '';
+        document.getElementById('editDesc').value = '';
+        document.getElementById('paramList').innerHTML = `
+            <div class="row mb-2">
+                <div class="col-5"><input class="form-control form-control-sm" placeholder="参数名" value="tax_rate"></div>
+                <div class="col-5"><input class="form-control form-control-sm" type="number" step="any" placeholder="值" value="0.25"></div>
+                <div class="col-2"><button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-x"></i></button></div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-5"><input class="form-control form-control-sm" placeholder="参数名" value="growth_rate"></div>
+                <div class="col-5"><input class="form-control form-control-sm" type="number" step="any" placeholder="值" value="0.05"></div>
+                <div class="col-2"><button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-x"></i></button></div>
+            </div>`;
+        editModal.show();
+    }
+
+    function editScenario(id) {
+        const s = allScenarios.find(x => x.id === id);
+        if (!s) return;
+        document.getElementById('editId').value = id;
+        document.getElementById('editName').value = s.name;
+        document.getElementById('editDesc').value = s.description || '';
+
+        const params = s.params || {};
+        let html = '';
+        for (const [key, value] of Object.entries(params)) {
+            html += `
+                <div class="row mb-2">
+                    <div class="col-5"><input class="form-control form-control-sm param-key" placeholder="参数名" value="${escapeHtml(key)}"></div>
+                    <div class="col-5"><input class="form-control form-control-sm param-value-input" type="number" step="any" placeholder="值" value="${escapeHtml(value)}"></div>
+                    <div class="col-2"><button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-x"></i></button></div>
+                </div>`;
+        }
+        if (!html) {
+            html = '<div class="text-muted small mb-2">暂无参数，请添加</div>';
+        }
+        document.getElementById('paramList').innerHTML = html;
+        editModal.show();
+    }
+
+    function addParamField() {
+        const container = document.getElementById('paramList');
+        const emptyMsg = container.querySelector('.text-muted');
+        if (emptyMsg) emptyMsg.remove();
+        const div = document.createElement('div');
+        div.className = 'row mb-2';
+        div.innerHTML = `
+            <div class="col-5"><input class="form-control form-control-sm param-key" placeholder="参数名" value="new_param"></div>
+            <div class="col-5"><input class="form-control form-control-sm param-value-input" type="number" step="any" placeholder="值" value="0"></div>
+            <div class="col-2"><button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-x"></i></button></div>`;
+        container.appendChild(div);
+    }
+
+    async function saveScenario() {
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('editName').value.trim();
+        const desc = document.getElementById('editDesc').value.trim();
+
+        if (!name) { showToast('请输入方案名称', 'warning'); return; }
+
+        // 收集参数
+        const keys = document.querySelectorAll('.param-key');
+        const vals = document.querySelectorAll('.param-value-input');
+        const params = {};
+        keys.forEach((k, i) => {
+            const key = k.value.trim();
+            if (key) {
+                params[key] = parseFloat(vals[i].value) || 0;
+            }
+        });
+
+        const payload = {name, description: desc, params};
+
+        try {
+            let resp;
+            if (id) {
+                // 更新
+                resp = await fetch(`/api/hypothesis/scenarios/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // 新建
+                payload.id = `scenario_${Date.now().toString(36)}`;
+                resp = await fetch('/api/hypothesis/scenarios', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            }
+            const data = await resp.json();
+            if (data.success || data.scenario) {
+                showToast('方案已保存', 'success');
+                editModal.hide();
+                loadScenarios();
+            }
+        } catch(e) {
+            showToast('保存失败', 'error');
+        }
+    }
+
+    // ============ 复制/删除 ============
+    async function duplicateScenario() {
+        if (!currentScenarioId) { showToast('请先选择一个方案', 'warning'); return; }
+        const s = allScenarios.find(x => x.id === currentScenarioId);
+        if (!s) return;
+
+        const newId = `scenario_${Date.now().toString(36)}`;
+        const payload = {
+            id: newId,
+            name: s.name + ' (副本)',
+            description: s.description || '',
+            params: {...(s.params || {})}
+        };
+
+        try {
+            const resp = await fetch('/api/hypothesis/scenarios', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (data.success || data.scenario) {
+                showToast('已复制方案', 'success');
+                loadScenarios();
+            }
+        } catch(e) {
+            showToast('复制失败', 'error');
+        }
+    }
+
+    async function deleteScenario() {
+        if (!currentScenarioId) { showToast('请先选择一个方案', 'warning'); return; }
+        if (!confirm('确定要删除此方案吗？')) return;
+
+        try {
+            const resp = await fetch(`/api/hypothesis/scenarios/${currentScenarioId}`, {
+                method: 'DELETE'
+            });
+            const data = await resp.json();
+            if (data.success) {
+                showToast('方案已删除', 'success');
+                currentScenarioId = null;
+                loadScenarios();
+            }
+        } catch(e) {
+            showToast('删除失败', 'error');
+        }
+    }
+
+    // ============ 方案对比 ============
+    async function compareScenarios() {
+        const checked = document.querySelectorAll('#compareCheckboxes input:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+
+        if (ids.length < 2) {
+            showToast('请至少选择两个方案进行对比', 'warning');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/hypothesis/compare', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({scenario_ids: ids})
+            });
+            const data = await resp.json();
+            const comparison = data.comparison || {};
+
+            const scenarios = ids.map(id => allScenarios.find(s => s.id === id)).filter(Boolean);
+
+            let html = '<div class="table-container"><table class="table table-bordered table-sm"><thead><tr><th>参数</th>';
+            scenarios.forEach(s => { html += `<th>${escapeHtml(s.name)}</th>`; });
+            html += '</tr></thead><tbody>';
+
+            for (const [param, values] of Object.entries(comparison)) {
+                html += `<tr><td><code>${escapeHtml(param)}</code></td>`;
+                ids.forEach(id => {
+                    const val = values[id];
+                    html += `<td class="param-value" style="font-size:0.9rem;">${val !== undefined ? escapeHtml(val) : '-'}</td>`;
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
+
+            document.getElementById('comparisonResult').innerHTML = html;
+        } catch(e) {
+            showToast('对比失败', 'error');
+        }
+    }
+</script>
+{% endblock %}

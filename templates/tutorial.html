@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}SQL_NB - SQLite语法教程{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-3"><i class="bi bi-book me-2"></i>SQLite 基础语法教程</h4>
+        <p class="text-muted small">本教程涵盖SQLite常用语法，所有语句可在「SQL查询」页面中直接运行。</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-columns"></i> 目录
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3"><a href="#sec-basic" class="text-decoration-none">1. 基本查询</a></div>
+                    <div class="col-md-3"><a href="#sec-where" class="text-decoration-none">2. 条件过滤</a></div>
+                    <div class="col-md-3"><a href="#sec-aggregate" class="text-decoration-none">3. 聚合统计</a></div>
+                    <div class="col-md-3"><a href="#sec-join" class="text-decoration-none">4. 多表连接</a></div>
+                    <div class="col-md-3"><a href="#sec-order" class="text-decoration-none">5. 排序与限制</a></div>
+                    <div class="col-md-3"><a href="#sec-group" class="text-decoration-none">6. 分组与Having</a></div>
+                    <div class="col-md-3"><a href="#sec-subquery" class="text-decoration-none">7. 子查询</a></div>
+                    <div class="col-md-3"><a href="#sec-function" class="text-decoration-none">8. 常用函数</a></div>
+                    <div class="col-md-3"><a href="#sec-date" class="text-decoration-none">9. 日期时间</a></div>
+                    <div class="col-md-3"><a href="#sec-window" class="text-decoration-none">10. 窗口函数</a></div>
+                    <div class="col-md-3"><a href="#sec-case" class="text-decoration-none">11. CASE条件表达式</a></div>
+                    <div class="col-md-3"><a href="#sec-param" class="text-decoration-none">12. 参数插值</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-basic">
+            <div class="card-header">1. 基本查询</div>
+            <div class="card-body">
+                <h5>查询所有数据</h5>
+                <div class="sql-example">SELECT * FROM 表名;</div>
+
+                <h5>查询指定列</h5>
+                <div class="sql-example">SELECT 列1, 列2, 列3 FROM 表名;</div>
+
+                <h5>查询前N行</h5>
+                <div class="sql-example">SELECT * FROM 表名 LIMIT 10;</div>
+
+                <h5>去重查询</h5>
+                <div class="sql-example">SELECT DISTINCT 列名 FROM 表名;</div>
+
+                <h5>别名</h5>
+                <div class="sql-example">SELECT 列名 AS 别名 FROM 表名 AS t;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-where">
+            <div class="card-header">2. 条件过滤 (WHERE)</div>
+            <div class="card-body">
+                <h5>比较运算符</h5>
+                <div class="sql-example">SELECT * FROM 表名 WHERE 列名 > 100;
+SELECT * FROM 表名 WHERE 列名 = '特定值';
+SELECT * FROM 表名 WHERE 列名 BETWEEN 100 AND 200;</div>
+
+                <h5>IN 运算符</h5>
+                <div class="sql-example">SELECT * FROM 表名 WHERE 城市 IN ('北京', '上海', '广州');</div>
+
+                <h5>LIKE 模糊匹配</h5>
+                <div class="sql-example">SELECT * FROM 表名 WHERE 姓名 LIKE '张%';  -- 以"张"开头
+SELECT * FROM 表名 WHERE 姓名 LIKE '%小明%';  -- 包含"小明"</div>
+
+                <h5>AND / OR / NOT</h5>
+                <div class="sql-example">SELECT * FROM 表名 WHERE 年龄 > 30 AND 城市 = '北京';
+SELECT * FROM 表名 WHERE NOT 状态 = '已关闭';</div>
+
+                <h5>NULL判断</h5>
+                <div class="sql-example">SELECT * FROM 表名 WHERE 列名 IS NULL;
+SELECT * FROM 表名 WHERE 列名 IS NOT NULL;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-aggregate">
+            <div class="card-header">3. 聚合统计</div>
+            <div class="card-body">
+                <div class="sql-example">SELECT COUNT(*) FROM 表名;           -- 总行数
+SELECT COUNT(DISTINCT 列名) FROM 表名;  -- 去重计数
+SELECT SUM(金额) FROM 表名;            -- 求和
+SELECT AVG(金额) FROM 表名;            -- 平均值
+SELECT MAX(金额) FROM 表名;            -- 最大值
+SELECT MIN(金额) FROM 表名;            -- 最小值</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-join">
+            <div class="card-header">4. 多表连接 (JOIN)</div>
+            <div class="card-body">
+                <h5>INNER JOIN (内连接)</h5>
+                <div class="sql-example">SELECT a.列1, a.列2, b.列3
+FROM 表A a
+INNER JOIN 表B b ON a.关联列 = b.关联列;</div>
+
+                <h5>LEFT JOIN (左连接)</h5>
+                <div class="sql-example">SELECT a.*, b.列名
+FROM 表A a
+LEFT JOIN 表B b ON a.关联列 = b.关联列;</div>
+
+                <h5>多表连接</h5>
+                <div class="sql-example">SELECT *
+FROM 表A a
+LEFT JOIN 表B b ON a.id = b.a_id
+LEFT JOIN 表C c ON a.id = c.a_id;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-order">
+            <div class="card-header">5. 排序与限制</div>
+            <div class="card-body">
+                <h5>排序</h5>
+                <div class="sql-example">SELECT * FROM 表名 ORDER BY 列名 ASC;   -- 升序（默认）
+SELECT * FROM 表名 ORDER BY 列名 DESC;  -- 降序
+SELECT * FROM 表名 ORDER BY 列1 ASC, 列2 DESC;  -- 多列排序</div>
+
+                <h5>分页查询</h5>
+                <div class="sql-example">SELECT * FROM 表名 LIMIT 20 OFFSET 0;    -- 第1页（每页20行）
+SELECT * FROM 表名 LIMIT 20 OFFSET 20;   -- 第2页
+SELECT * FROM 表名 LIMIT 20 OFFSET 40;   -- 第3页</div>
+                <p class="text-muted small mt-1"><i class="bi bi-info-circle"></i> 提示：在SQL查询页面中，工具会自动处理分页，无需手动写LIMIT/OFFSET。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-group">
+            <div class="card-header">6. 分组与HAVING</div>
+            <div class="card-body">
+                <h5>GROUP BY 分组统计</h5>
+                <div class="sql-example">SELECT 城市, COUNT(*) AS 数量, SUM(金额) AS 总金额
+FROM 订单表
+GROUP BY 城市;</div>
+
+                <h5>HAVING 过滤分组</h5>
+                <div class="sql-example">SELECT 城市, COUNT(*) AS 数量, AVG(金额) AS 平均金额
+FROM 订单表
+GROUP BY 城市
+HAVING COUNT(*) > 10;</div>
+                <p class="text-muted small"><i class="bi bi-info-circle"></i> WHERE过滤行，HAVING过滤分组后的结果。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-subquery">
+            <div class="card-header">7. 子查询</div>
+            <div class="card-body">
+                <h5>WHERE中的子查询</h5>
+                <div class="sql-example">SELECT * FROM 表名
+WHERE 金额 > (SELECT AVG(金额) FROM 表名);</div>
+
+                <h5>FROM中的子查询（临时表）</h5>
+                <div class="sql-example">SELECT 城市, 平均金额
+FROM (
+    SELECT 城市, AVG(金额) AS 平均金额
+    FROM 订单表
+    GROUP BY 城市
+) AS sub
+WHERE 平均金额 > 1000;</div>
+
+                <h5>EXISTS 子查询</h5>
+                <div class="sql-example">SELECT * FROM 表A a
+WHERE EXISTS (
+    SELECT 1 FROM 表B b
+    WHERE b.关联列 = a.关联列
+);</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-function">
+            <div class="card-header">8. 常用SQLite函数</div>
+            <div class="card-body">
+                <h5>字符串函数</h5>
+                <div class="sql-example">SELECT LENGTH(列名) FROM 表名;         -- 字符串长度
+SELECT UPPER(列名) FROM 表名;         -- 转大写
+SELECT LOWER(列名) FROM 表名;         -- 转小写
+SELECT TRIM(列名) FROM 表名;          -- 去空格
+SELECT SUBSTR(列名, 1, 3) FROM 表名; -- 截取（从第1位起取3个字符）
+SELECT REPLACE(列名, '旧值', '新值');  -- 替换</div>
+
+                <h5>数值函数</h5>
+                <div class="sql-example">SELECT ROUND(列名, 2) FROM 表名;       -- 四舍五入保留2位小数
+SELECT ABS(列名) FROM 表名;            -- 绝对值
+SELECT CAST(列名 AS INTEGER) FROM 表名; -- 类型转换</div>
+
+                <h5>类型转换</h5>
+                <div class="sql-example">SELECT CAST(文本列 AS REAL) FROM 表名;  -- 转数值
+SELECT CAST(数值列 AS TEXT) FROM 表名;   -- 转文本</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-date">
+            <div class="card-header">9. 日期时间处理</div>
+            <div class="card-body">
+                <p class="text-muted small">SQLite没有专用的日期类型，日期以 TEXT (YYYY-MM-DD)、REAL (儒略日) 或 INTEGER (Unix时间戳) 存储。</p>
+
+                <h5>日期函数</h5>
+                <div class="sql-example">SELECT DATE('now');              -- 当前日期: 2024-01-15
+SELECT TIME('now');              -- 当前时间: 14:30:00
+SELECT DATETIME('now');          -- 当前日期时间
+SELECT STRFTIME('%Y-%m', 日期列); -- 格式化为年月</div>
+
+                <h5>日期计算</h5>
+                <div class="sql-example">SELECT DATE('now', '+1 month');     -- 一个月后
+SELECT DATE('now', '-7 day');        -- 一周前
+SELECT DATE('now', 'start of year'); -- 今年第一天</div>
+
+                <h5>按年月统计</h5>
+                <div class="sql-example">SELECT STRFTIME('%Y-%m', 日期列) AS 年月,
+       COUNT(*) AS 数量,
+       SUM(金额) AS 总金额
+FROM 表名
+GROUP BY STRFTIME('%Y-%m', 日期列)
+ORDER BY 年月;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-window">
+            <div class="card-header">10. 窗口函数</div>
+            <div class="card-body">
+                <p class="text-muted small">窗口函数在不改变行数的情况下进行计算，非常适合排名、累计、移动平均等场景。</p>
+
+                <h5>ROW_NUMBER - 行号</h5>
+                <div class="sql-example">SELECT *,
+       ROW_NUMBER() OVER (ORDER BY 金额 DESC) AS 排名
+FROM 表名;</div>
+
+                <h5>分组排名</h5>
+                <div class="sql-example">SELECT *,
+       ROW_NUMBER() OVER (PARTITION BY 城市 ORDER BY 金额 DESC) AS 城市内排名
+FROM 表名;</div>
+
+                <h5>累计求和</h5>
+                <div class="sql-example">SELECT 日期, 金额,
+       SUM(金额) OVER (ORDER BY 日期) AS 累计金额
+FROM 表名;</div>
+
+                <h5>移动平均</h5>
+                <div class="sql-example">SELECT 日期, 金额,
+       AVG(金额) OVER (ORDER BY 日期 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS 3日移动平均
+FROM 表名;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-case">
+            <div class="card-header">11. CASE 条件表达式</div>
+            <div class="card-body">
+                <div class="sql-example">SELECT *,
+    CASE
+        WHEN 金额 >= 10000 THEN '大单'
+        WHEN 金额 >= 5000 THEN '中单'
+        ELSE '小单'
+    END AS 订单等级
+FROM 表名;</div>
+
+                <h5>结合统计</h5>
+                <div class="sql-example">SELECT
+    SUM(CASE WHEN 状态 = '已完成' THEN 金额 ELSE 0 END) AS 已完成金额,
+    SUM(CASE WHEN 状态 = '进行中' THEN 金额 ELSE 0 END) AS 进行中金额
+FROM 表名;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row tutorial-section">
+    <div class="col-12">
+        <div class="card" id="sec-param">
+            <div class="card-header">12. 参数插值（本工具特色功能）</div>
+            <div class="card-body">
+                <p>在SQL语句中使用 <code>{% raw %}{{参数名}}{% endraw %}</code> 引用假设参数方案中的值。</p>
+
+                <h5>示例</h5>
+                <p>假设方案中设置参数：<code>tax_rate = 0.25</code></p>
+                <div class="sql-example">SELECT *,
+       金额 * {{tax_rate}} AS 税额,
+       金额 * (1 - {{tax_rate}}) AS 税后金额
+FROM 收入表;</div>
+
+                <p class="text-muted small"><i class="bi bi-info-circle"></i> 在SQL查询页面中，执行前选择假设方案，<code>{% raw %}{{tax_rate}}{% endraw %}</code> 会自动替换为实际数值。</p>
+
+                <h5>多方案对比</h5>
+                <div class="sql-example">-- 切换不同假设方案，查看不同税率下的结果
+SELECT *,
+       金额 * {{tax_rate}} AS 税额
+FROM 收入表
+WHERE 日期 >= '2024-01-01';</div>
+                <p class="text-muted small">在「假设参数」页中创建多套方案，在SQL查询页中切换方案并重新执行即可对比。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12 text-center text-muted small py-3">
+        <i class="bi bi-lightbulb"></i> 提示：在SQL查询页面按 <kbd>Ctrl+Enter</kbd> (Mac: <kbd>Cmd+Enter</kbd>) 快速执行SQL
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "id": "baseline",
+      "name": "基准方案",
+      "description": "默认基准参数方案",
+      "params": {
+        "tax_rate": 0.25,
+        "growth_rate": 0.05,
+        "discount_rate": 0.08,
+        "cost_inflation": 0.03
+      }
+    },
+    {
+      "id": "scenario_1",
+      "name": "方案一",
+      "description": "乐观方案",
+      "params": {
+        "tax_rate": 0.2,
+        "growth_rate": 0.1,
+        "discount_rate": 0.06,
+        "cost_inflation": 0.02
+      }
+    },
+    {
+      "id": "scenario_2",
+      "name": "方案二",
+      "description": "保守方案",
+      "params": {
+        "tax_rate": 0.25,
+        "growth_rate": 0.02,
+        "discount_rate": 0.1,
+        "cost_inflation": 0.05
+      }
+    }
+  ]
+}

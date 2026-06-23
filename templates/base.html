@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SQL_NB - SQLite数据分析工具{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS (CDN, 离线部署时需下载本地) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+
+    <style>
+        :root {
+            --sidebar-width: 220px;
+        }
+        body {
+            font-size: 0.92rem;
+            background-color: #f5f7fa;
+        }
+        .app-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            height: 52px;
+        }
+        .app-header .logo {
+            font-weight: 600;
+            font-size: 1.15rem;
+        }
+        .app-header .logo i {
+            color: #4fc3f7;
+            margin-right: 8px;
+        }
+        .app-sidebar {
+            position: fixed;
+            top: 52px;
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: #1e293b;
+            padding-top: 0.5rem;
+            overflow-y: auto;
+            z-index: 1020;
+        }
+        .app-sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 0.65rem 1.2rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .app-sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.08);
+        }
+        .app-sidebar .nav-link.active {
+            color: white;
+            background: rgba(79, 195, 247, 0.15);
+            border-left-color: #4fc3f7;
+        }
+        .app-sidebar .nav-link i {
+            margin-right: 8px;
+            width: 18px;
+            text-align: center;
+        }
+        .app-sidebar .sidebar-section {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 1rem 1.2rem 0.4rem;
+        }
+        .app-main {
+            margin-left: var(--sidebar-width);
+            margin-top: 52px;
+            padding: 1.2rem 1.5rem;
+            min-height: calc(100vh - 52px);
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 1rem;
+        }
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #eef0f4;
+            font-weight: 600;
+            padding: 0.75rem 1.2rem;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-tool {
+            border-radius: 8px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        .badge-db {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .table-container table {
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+        .table-container th {
+            background: #f8f9fc;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafbfc;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #4fc3f7;
+            background: #e8f4fd;
+        }
+        .drop-zone i {
+            font-size: 2.5rem;
+            color: #94a3b8;
+        }
+        .sql-editor {
+            border: 1px solid #dde1e6;
+            border-radius: 8px;
+            min-height: 200px;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+        .status-bar {
+            background: #f8f9fc;
+            border-top: 1px solid #eef0f4;
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .page-link {
+            border-radius: 6px !important;
+            margin: 0 1px;
+            font-size: 0.82rem;
+        }
+        .toast-container {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .param-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin-bottom: 0.6rem;
+        }
+        .param-card .param-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #334155;
+        }
+        .param-card .param-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0ea5e9;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .app-sidebar {
+                display: none;
+            }
+            .app-main {
+                margin-left: 0;
+                padding: 1rem;
+            }
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+        code {
+            color: #e879f9;
+        }
+        .tutorial-section h5 {
+            color: #1e293b;
+            margin-top: 1.5rem;
+            font-weight: 600;
+        }
+        .tutorial-section .sql-example {
+            background: #1e293b;
+            color: #a5d6ff;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header d-flex align-items-center justify-content-between">
+        <div class="logo">
+            <i class="bi bi-database-gear"></i>SQL_NB
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span id="currentDbBadge" class="badge bg-light text-dark d-none">
+                <i class="bi bi-database"></i> <span id="currentDbName"></span>
+            </span>
+            <span class="text-white-50" style="font-size:0.8rem;">
+                <i class="bi bi-shield-check"></i> 本地单机工具
+            </span>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav class="app-sidebar">
+        <div class="sidebar-section">导航菜单</div>
+        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+            <i class="bi bi-upload"></i>数据导入
+        </a>
+        <a href="/sql" class="nav-link {% if request.path == '/sql' %}active{% endif %}">
+            <i class="bi bi-code-square"></i>SQL查询
+        </a>
+        <a href="/hypothesis" class="nav-link {% if request.path == '/hypothesis' %}active{% endif %}">
+            <i class="bi bi-sliders"></i>假设参数
+        </a>
+        <a href="/tutorial" class="nav-link {% if request.path == '/tutorial' %}active{% endif %}">
+            <i class="bi bi-book"></i>SQLite教程
+        </a>
+        <div class="sidebar-section mt-3">数据库</div>
+        <div id="sidebarDbList" style="padding: 0 0.8rem;">
+            <!-- 由JS动态填充 -->
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast 通知容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js DataLabels 插件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script>
+        // 注册 datalabels 插件，并全局关闭默认显示（按需启用）
+        Chart.register(ChartDataLabels);
+        Chart.defaults.plugins.datalabels.display = false;
+    </script>
+
+    <script>
+        // ============ 全局工具函数 ============
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const icons = {
+                success: 'bi-check-circle-fill text-success',
+                error: 'bi-x-circle-fill text-danger',
+                warning: 'bi-exclamation-triangle-fill text-warning',
+                info: 'bi-info-circle-fill text-primary'
+            };
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-bg-light border-0 show';
+            toast.role = 'alert';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${icons[type] || icons.info} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 5000);
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '-';
+            return num.toLocaleString();
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '<span class="text-muted">NULL</span>';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        // ============ 侧边栏数据库列表 ============
+
+        async function refreshSidebarDbList() {
+            try {
+                const resp = await fetch('/api/databases');
+                const data = await resp.json();
+                const list = document.getElementById('sidebarDbList');
+                if (!data.databases || data.databases.length === 0) {
+                    list.innerHTML = '<div class="text-white-50 small px-2 py-1">暂无数据库</div>';
+                    return;
+                }
+                let html = '';
+                data.databases.forEach(db => {
+                    html += `
+                        <div class="d-flex align-items-center py-1 px-2 sidebar-db-item"
+                             style="cursor:pointer;border-radius:6px;color:rgba(255,255,255,0.7);font-size:0.82rem;"
+                             onclick="setCurrentDb('${db.name}')"
+                             title="${db.name} (${db.tables.length}张表, ${db.size_display})">
+                            <i class="bi bi-database me-2" style="font-size:0.7rem;"></i>
+                            <span class="text-truncate flex-grow-1">${db.name}</span>
+                            <span class="badge bg-light text-dark rounded-pill" style="font-size:0.65rem;">${db.tables.length}</span>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            } catch(e) {
+                console.error('刷新数据库列表失败:', e);
+            }
+        }
+
+        async function setCurrentDb(dbName) {
+            try {
+                await fetch('/api/databases/current', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({db_name: dbName})
+                });
+                const badge = document.getElementById('currentDbBadge');
+                badge.classList.remove('d-none');
+                document.getElementById('currentDbName').textContent = dbName;
+                showToast(`已切换到数据库: ${dbName}`, 'success');
+                refreshSidebarDbList();
+            } catch(e) {
+                showToast('切换数据库失败', 'error');
+            }
+        }
+
+        // 初始化加载
+        document.addEventListener('DOMContentLoaded', async function() {
+            refreshSidebarDbList();
+
+            // 加载当前数据库
+            try {
+                const resp = await fetch('/api/databases/current');
+                const data = await resp.json();
+                if (data.db_name) {
+                    const badge = document.getElementById('currentDbBadge');
+                    badge.classList.remove('d-none');
+                    document.getElementById('currentDbName').textContent = data.db_name;
+                }
+            } catch(e) {}
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
