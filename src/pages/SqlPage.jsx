@@ -59,7 +59,12 @@ export default function SqlPage() {
   const executeRef = useRef(() => {})
 
   const handleExecute = async (gotoPage = 1) => {
-    if (!sqlText.trim()) {
+    // 优先执行选中的 SQL，无选中则执行全部
+    const view = editorRef.current?.view
+    const selection = view?.state.selection.main
+    const selectedText = selection && !selection.empty ? view.state.doc.sliceString(selection.from, selection.to) : ''
+    const sqlToRun = selectedText.trim() || sqlText.trim()
+    if (!sqlToRun) {
       addToast('请输入 SQL 语句', 'warning')
       return
     }
@@ -72,7 +77,7 @@ export default function SqlPage() {
     setPage(gotoPage)
     try {
       const result = await window.electronAPI.runQuery({
-        sql: sqlText,
+        sql: sqlToRun,
         dbName: currentDb,
         scenarioId: selectedScenario || undefined,
         page: gotoPage,
@@ -82,7 +87,7 @@ export default function SqlPage() {
       setActiveResultIndex(0)
 
       // 保存历史
-      const newHistory = [{ sql: sqlText, time: new Date().toISOString() }, ...history]
+      const newHistory = [{ sql: sqlToRun, time: new Date().toISOString() }, ...history]
       const updatedHistory = newHistory.slice(0, MAX_HISTORY)
       setHistory(updatedHistory)
       saveHistory(updatedHistory)
@@ -103,19 +108,36 @@ export default function SqlPage() {
     executeRef.current = () => handleExecute(1)
   }, [handleExecute])
 
-  const editorExtensions = useMemo(() => [
-    sql(),
-    keymap.of([
-      {
-        key: 'Ctrl-Enter',
-        run: () => { executeRef.current(); return true }
-      },
-      {
-        key: 'Cmd-Enter',
-        run: () => { executeRef.current(); return true }
+  const currentDbInfo = databases.find(db => db.name === currentDb)
+
+  const editorExtensions = useMemo(() => {
+    const schema = {}
+    if (currentDbInfo) {
+      for (const table of currentDbInfo.tables) {
+        schema[table] = []
       }
-    ])
-  ], [])
+    }
+    return [
+      sql({ schema }),
+      autocompletion(),
+      Prec.highest(keymap.of([
+        {
+          key: 'Tab',
+          run: (view) => acceptCompletion(view) ? true : true
+        }
+      ])),
+      keymap.of([
+        {
+          key: 'Ctrl-Enter',
+          run: () => { executeRef.current(); return true }
+        },
+        {
+          key: 'Cmd-Enter',
+          run: () => { executeRef.current(); return true }
+        }
+      ])
+    ]
+  }, [currentDbInfo])
 
   useEffect(() => {
     loadScenarios()
@@ -175,13 +197,21 @@ export default function SqlPage() {
       return
     }
 
+    // 弹窗询问导出路径
+    const defaultName = exportConfig.filename || (results.length > 1 ? 'export.xlsx' : `${results[0].sql?.slice(0, 20) || 'export'}.xlsx`)
+    const savePath = await window.electronAPI.selectExportPath(defaultName)
+    if (!savePath) {
+      addToast('已取消导出', 'info')
+      return
+    }
+
     try {
       const result = await window.electronAPI.exportQueryResults({
         results,
-        exportConfig
+        exportConfig: { ...exportConfig, savePath }
       })
       if (result.success) {
-        addToast(`导出成功: ${result.filename}`, 'success')
+        addToast(`导出成功: ${result.savedPath || result.filename}`, 'success')
       } else {
         addToast('导出失败: ' + result.error, 'error')
       }
@@ -191,7 +221,18 @@ export default function SqlPage() {
   }
 
   const insertTableName = (tableName) => {
-    setSqlText(prev => prev ? `${prev}\n"${tableName}"` : `"${tableName}"`)
+    const view = editorRef.current?.view
+    if (view) {
+      const { from, to } = view.state.selection.main
+      const insertText = `"${tableName}"`
+      view.dispatch({
+        changes: { from, to, insert: insertText },
+        selection: { anchor: from + insertText.length }
+      })
+      view.focus()
+    } else {
+      setSqlText(prev => prev ? `${prev}"${tableName}"` : `"${tableName}"`)
+    }
   }
 
   const saveTemplate = () => {
@@ -381,32 +422,32 @@ export default function SqlPage() {
                   lineNumbers: true,
                   highlightActiveLineGutter: true,
                   highlightActiveLine: true,
-                  foldGutter: false
+                  foldGutter: false,
+                  indentWithTab: false
                 }}
               />
             </div>
           </div>
 
           {/* 结果区 */}
-          {queryResult && (
-            <div className="card flex-1 min-h-[280px] flex flex-col">
-              <div className="card-header flex-wrap gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="card-title">查询结果</span>
-                  {queryResult.multi && queryResult.results.length > 1 && (
-                    <div className="flex items-center gap-1">
-                      {queryResult.results.map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setActiveResultIndex(idx)}
-                          className={`px-2 py-0.5 text-xs rounded-md ${activeResultIndex === idx ? 'bg-primary-100 text-primary-700' : 'bg-surface-100 text-surface-600 hover:bg-surface-200'}`}
-                        >
-                          结果 {idx + 1}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <div className="card flex-1 min-h-[280px] flex flex-col">
+            <div className="card-header flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <span className="card-title">查询结果</span>
+                {queryResult?.multi && queryResult.results.length > 1 && (
+                  <div className="flex items-center gap-1">
+                    {queryResult.results.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveResultIndex(idx)}
+                        className={`px-2 py-0.5 text-xs rounded-md ${activeResultIndex === idx ? 'bg-primary-100 text-primary-700' : 'bg-surface-100 text-surface-600 hover:bg-surface-200'}`}
+                      >
+                        结果 {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
                 {activeResult?.success && activeResult.columns && (
                   <div className="flex items-center gap-2 ml-auto">
@@ -442,7 +483,11 @@ export default function SqlPage() {
               </div>
 
               <div className="flex-1 overflow-auto p-0">
-                {!activeResult?.success ? (
+                {!activeResult ? (
+                  <div className="flex items-center justify-center h-full text-surface-400 text-sm py-12">
+                    执行 SQL 查询后，结果将在此处显示
+                  </div>
+                ) : !activeResult?.success ? (
                   <div className="p-4 text-red-600 text-sm bg-red-50">
                     {activeResult?.error || '执行失败'}
                   </div>
@@ -524,7 +569,6 @@ export default function SqlPage() {
                 )}
               </div>
             </div>
-          )}
         </div>
       </div>
     </div>

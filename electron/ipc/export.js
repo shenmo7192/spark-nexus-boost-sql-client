@@ -26,7 +26,6 @@ async function exportQueryResults(options) {
     } else {
       filename = `export_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}.xlsx`
     }
-
     // 过滤掉执行失败的结果集
     const validResults = results.filter(r => r.success && r.columns && r.rows)
 
@@ -74,28 +73,18 @@ async function exportQueryResults(options) {
       }
     })
 
-    // 保存到默认导出目录
-    const exportDir = getExportDir()
-    const downloadPath = join(exportDir, filename)
-    await workbook.xlsx.writeFile(downloadPath)
-
+    // 保存到指定路径，否则使用默认导出目录
+    let downloadPath
     let savedPath = null
-    let pathWarning = null
-
-    // 如果指定了自定义路径，额外保存一份
-    const customPath = exportConfig.path
-    if (customPath) {
-      try {
-        if (!fs.existsSync(customPath)) {
-          fs.mkdirSync(customPath, { recursive: true })
-        }
-        const outputPath = join(customPath, filename)
-        fs.copyFileSync(downloadPath, outputPath)
-        savedPath = outputPath
-      } catch (err) {
-        pathWarning = `文件已保存到默认目录，自定义路径写入失败: ${err.message}`
-      }
+    if (exportConfig.savePath) {
+      downloadPath = exportConfig.savePath
+      savedPath = exportConfig.savePath
+      filename = require('path').basename(downloadPath)
+    } else {
+      const exportDir = getExportDir()
+      downloadPath = join(exportDir, filename)
     }
+    await workbook.xlsx.writeFile(downloadPath)
 
     const resp = {
       success: true,
@@ -103,7 +92,6 @@ async function exportQueryResults(options) {
       downloadPath
     }
     if (savedPath) resp.savedPath = savedPath
-    if (pathWarning) resp.pathWarning = pathWarning
     return resp
   } catch (error) {
     return { success: false, error: error.message }
