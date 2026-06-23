@@ -1,5 +1,6 @@
 import { Database, Settings, FolderOpen } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+import logo from '../assets/logo.png'
 
 export default function Header() {
   const { appInfo, currentDb, dataDir, setDataDir, addToast } = useAppStore()
@@ -24,13 +25,9 @@ export default function Header() {
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg overflow-hidden">
           <img
-            src="/这是迷人的Logo.png"
+            src={logo}
             alt="Logo"
             className="w-full h-full object-contain"
-            onError={(e) => {
-              e.target.style.display = 'none'
-              e.target.parentElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>'
-            }}
           />
         </div>
         <div className="flex flex-col">
