@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import Layout from './components/Layout'
 import ImportPage from './pages/ImportPage'
 import SqlPage from './pages/SqlPage'
+import ChartPage from './pages/ChartPage'
 import HypothesisPage from './pages/HypothesisPage'
 import TutorialPage from './pages/TutorialPage'
 import { useAppStore } from './store/appStore'
@@ -9,6 +10,7 @@ import { useAppStore } from './store/appStore'
 const pages = {
   import: ImportPage,
   sql: SqlPage,
+  chart: ChartPage,
   hypothesis: HypothesisPage,
   tutorial: TutorialPage
 }

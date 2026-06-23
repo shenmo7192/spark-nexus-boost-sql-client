@@ -1,9 +1,10 @@
-import { Upload, Code2, SlidersHorizontal, BookOpen } from 'lucide-react'
+import { Upload, Code2, BarChart3, SlidersHorizontal, BookOpen } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
 
 const navItems = [
   { id: 'import', label: '数据导入', icon: Upload },
   { id: 'sql', label: 'SQL 查询', icon: Code2 },
+  { id: 'chart', label: '图表分析', icon: BarChart3 },
   { id: 'hypothesis', label: '假设参数', icon: SlidersHorizontal },
   { id: 'tutorial', label: 'SQLite 教程', icon: BookOpen }
 ]
