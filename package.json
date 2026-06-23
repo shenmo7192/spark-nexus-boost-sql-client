@@ -82,13 +82,22 @@
     "linux": {
       "target": [
         {
+          "target": "deb",
+          "arch": ["x64", "arm64"]
+        },
+        {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": ["x64", "arm64"]
         }
       ],
       "icon": "build/icons",
       "category": "Office",
       "maintainer": "Spark Nexus Boost"
+    },
+    "deb": {
+      "synopsis": "星火汇速SQL客户端",
+      "description": "本地离线 SQL 分析工具，支持 Excel 导入、SQLite 查询、假设分析与图表导出",
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
