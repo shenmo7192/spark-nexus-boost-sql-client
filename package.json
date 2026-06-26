@@ -1,6 +1,6 @@
 {
   "name": "spark-nexus-boost-sql-client",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "星火汇速 SQL 客户端 - Spark NB SQL (Spark Nexus Boost SQL)",
   "homepage": "https://github.com/spark-nexus-boost/sql-client",
   "main": "dist-electron/main.js",
@@ -70,11 +70,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"
@@ -83,11 +87,17 @@
       "target": [
         {
           "target": "deb",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "AppImage",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icons",
