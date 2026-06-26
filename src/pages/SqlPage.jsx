@@ -29,7 +29,7 @@ export default function SqlPage() {
     databases, currentDb, setCurrentDb, addToast, setDatabases,
     sheets, activeSheetId, sqlDraft, setSqlDraft,
     addSheet, removeSheet, renameSheet, reorderSheets,
-    setActiveSheet, updateSheetResult, ensureSheets
+    setActiveSheet, updateSheetResult, ensureSheets, showConfirm
   } = useAppStore()
 
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
@@ -309,9 +309,12 @@ export default function SqlPage() {
   const loadTemplate = (tpl) => setSqlDraft(tpl.sql)
 
   const deleteTemplate = (idx) => {
-    const newTemplates = templates.filter((_, i) => i !== idx)
-    setTemplates(newTemplates)
-    saveTemplates(newTemplates)
+    const tpl = templates[idx]
+    showConfirm(`确定删除 SQL 模板 "${tpl.name}" 吗？`, () => {
+      const newTemplates = templates.filter((_, i) => i !== idx)
+      setTemplates(newTemplates)
+      saveTemplates(newTemplates)
+    })
   }
 
   // ========== 树操作 ==========
@@ -562,7 +565,7 @@ export default function SqlPage() {
       </div>
 
       {/* ============ 中间：编辑器（上）+ 结果（下） ============ */}
-      <div className="flex-1 flex flex-col gap-3 min-h-0">
+      <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
         {/* SQL 编辑器 */}
         <div className="card flex flex-col min-h-0" style={{ flex: '1 1 42%' }}>
           <div className="card-header flex-wrap gap-2">
@@ -615,7 +618,7 @@ export default function SqlPage() {
         </div>
 
         {/* 结果区：多 Sheet 标签页 */}
-        <div className="card flex flex-col min-h-0" style={{ flex: '1 1 58%' }}>
+        <div className="card flex flex-col min-h-0 min-w-0" style={{ flex: '1 1 58%' }}>
           {/* Sheet 标签栏 */}
           <div className="flex items-center gap-1 px-2 pt-1.5 border-b border-surface-200 bg-surface-50 overflow-x-auto">
             {sheets.map(sheet => {
@@ -698,7 +701,7 @@ export default function SqlPage() {
               </div>
             ) : activeResult.columns ? (
               <>
-                <div className="flex-1 overflow-auto min-h-0">
+                <div className="flex-1 overflow-auto min-h-0 min-w-0">
                   <table className="data-table">
                     <thead>
                       <tr>

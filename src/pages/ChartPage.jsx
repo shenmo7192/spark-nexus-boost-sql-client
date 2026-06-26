@@ -36,17 +36,50 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
+const AGGREGATE_METHODS = [
+  { value: 'sum', label: '求和' },
+  { value: 'count', label: '计数' },
+  { value: 'avg', label: '平均值' },
+  { value: 'max', label: '最大值' },
+  { value: 'min', label: '最小值' }
+]
+
+function aggregateValue(values, method) {
+  if (method === 'count') return values.length
+  const nums = values.map(v => typeof v === 'number' ? v : parseFloat(v) || 0)
+  if (nums.length === 0) return 0
+  switch (method) {
+    case 'avg': return nums.reduce((a, b) => a + b, 0) / nums.length
+    case 'max': return Math.max(...nums)
+    case 'min': return Math.min(...nums)
+    case 'sum':
+    default: return nums.reduce((a, b) => a + b, 0)
+  }
+}
+
 // 根据列数据构建图表
 function buildChartData(result, config) {
   if (!result || !result.columns || !result.rows) return null
-  const { xColumn, yColumn, type } = config
+  const { xColumn, yColumn, type, aggregate, aggregateMethod } = config
   if (!xColumn || !yColumn) return null
 
-  const labels = result.rows.map(r => r[xColumn])
-  const data = result.rows.map(r => {
-    const v = r[yColumn]
-    return typeof v === 'number' ? v : parseFloat(v) || 0
-  })
+  let labels, data
+  if (aggregate) {
+    const groups = new Map()
+    result.rows.forEach(r => {
+      const key = String(r[xColumn] ?? '')
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(r[yColumn])
+    })
+    labels = Array.from(groups.keys())
+    data = labels.map(label => aggregateValue(groups.get(label), aggregateMethod || 'sum'))
+  } else {
+    labels = result.rows.map(r => r[xColumn])
+    data = result.rows.map(r => {
+      const v = r[yColumn]
+      return typeof v === 'number' ? v : parseFloat(v) || 0
+    })
+  }
 
   return {
     labels,
@@ -127,7 +160,7 @@ export default function ChartPage() {
   )
 
   const [selectedSheetId, setSelectedSheetId] = useState(null)
-  const [config, setConfig] = useState({ type: 'bar', title: '', xColumn: '', yColumn: '' })
+  const [config, setConfig] = useState({ type: 'bar', title: '', xColumn: '', yColumn: '', aggregate: false, aggregateMethod: 'sum' })
   const [savedCharts, setSavedCharts] = useState([])
   // 正在预览的已保存图表（从快照渲染，无需数据源）
   const [previewChart, setPreviewChart] = useState(null)
@@ -165,13 +198,21 @@ export default function ChartPage() {
       ...prev,
       xColumn: '',
       yColumn: '',
+      aggregate: false,
+      aggregateMethod: 'sum',
       title: prev.title || (currentSheet ? currentSheet.name : '')
     }))
   }, [selectedSheetId])
 
   // 正在编辑的图表数据：优先使用预览的已保存图表，否则用当前数据源
   const chartData = previewChart
-    ? buildChartData(previewChart.snapshot, { xColumn: previewChart.xColumn, yColumn: previewChart.yColumn, type: previewChart.type })
+    ? buildChartData(previewChart.snapshot, {
+        xColumn: previewChart.xColumn,
+        yColumn: previewChart.yColumn,
+        type: previewChart.type,
+        aggregate: previewChart.aggregate,
+        aggregateMethod: previewChart.aggregateMethod
+      })
     : (currentSheet ? buildChartData(currentSheet.result, config) : null)
 
   // 选择数据源时清除预览状态
@@ -198,6 +239,8 @@ export default function ChartPage() {
       sheetName: currentSheet.name,
       xColumn: config.xColumn,
       yColumn: config.yColumn,
+      aggregate: config.aggregate,
+      aggregateMethod: config.aggregateMethod,
       // 快照数据，确保即使 sheet 改变图表仍可复现
       snapshot: {
         columns: currentSheet.result.columns,
@@ -242,7 +285,15 @@ export default function ChartPage() {
       return
     }
     try {
-      const dataUrl = chart.toBase64Image()
+      // 提高导出分辨率：临时增大 devicePixelRatio，导出后恢复
+      const scale = 3
+      const originalDpr = chart.options.devicePixelRatio
+      chart.options.devicePixelRatio = scale
+      chart.resize()
+      const dataUrl = chart.toBase64Image('image/png', 1.0)
+      chart.options.devicePixelRatio = originalDpr
+      chart.resize()
+
       const defaultName = `${previewChart?.name || config.title || currentSheet?.name || 'chart'}.png`
       const result = await window.electronAPI.saveChartImage(dataUrl, defaultName)
       if (result.success) {
@@ -392,6 +443,30 @@ export default function ChartPage() {
                 {columns.map(col => <option key={col} value={col}>{col}</option>)}
               </select>
             </div>
+            <div>
+              <label className="form-label">分类汇总</label>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-surface-300 rounded-lg text-sm text-surface-700 cursor-pointer hover:bg-surface-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={config.aggregate}
+                    onChange={(e) => updateConfig({ aggregate: e.target.checked })}
+                    disabled={!currentSheet || !config.xColumn || !config.yColumn}
+                    className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  按 X 轴汇总
+                </label>
+                {config.aggregate && (
+                  <select
+                    value={config.aggregateMethod}
+                    onChange={(e) => updateConfig({ aggregateMethod: e.target.value })}
+                    className="form-input w-24"
+                  >
+                    {AGGREGATE_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-2 ml-auto">
               <button onClick={exportChartImage} className="btn-secondary" disabled={!chartData}>
                 <Download className="w-4 h-4" /> 导出图片
@@ -409,11 +484,13 @@ export default function ChartPage() {
             {previewChart ? (
               <span className="text-xs text-surface-400">
                 图表库: {previewChart.name} · {previewChart.xColumn} × {previewChart.yColumn}
+                {previewChart.aggregate ? ` · ${AGGREGATE_METHODS.find(m => m.value === (previewChart.aggregateMethod || 'sum'))?.label || '汇总'}` : ''}
               </span>
             ) : currentSheet ? (
               <span className="text-xs text-surface-400">
                 数据源: {currentSheet.name}
                 {config.xColumn && config.yColumn ? ` · ${config.xColumn} × ${config.yColumn}` : ''}
+                {config.aggregate ? ` · ${AGGREGATE_METHODS.find(m => m.value === config.aggregateMethod)?.label || '汇总'}` : ''}
               </span>
             ) : null}
           </div>
@@ -451,7 +528,13 @@ export default function ChartPage() {
             <div className="p-4 overflow-x-auto">
               <div className="flex gap-3">
                 {savedCharts.map(c => {
-                  const d = buildChartData(c.snapshot, { xColumn: c.xColumn, yColumn: c.yColumn, type: c.type })
+                  const d = buildChartData(c.snapshot, {
+                    xColumn: c.xColumn,
+                    yColumn: c.yColumn,
+                    type: c.type,
+                    aggregate: c.aggregate,
+                    aggregateMethod: c.aggregateMethod
+                  })
                   return (
                     <div key={c.id} className="w-64 shrink-0 border border-surface-200 rounded-lg p-2 group relative">
                       <button
