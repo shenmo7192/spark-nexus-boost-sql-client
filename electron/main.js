@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
-const { join } = require('path')
+const { join, resolve } = require('path')
 const fs = require('fs')
 
-const appPath = app.getAppPath()
+// 开发模式下使用项目根目录路径，生产模式下使用 app.getAppPath()
+const isDev = !!process.env.VITE_DEV_SERVER_URL
+const appPath = isDev ? resolve(__dirname, '..') : app.getAppPath()
 
 const database = require('./ipc/database')
 const query = require('./ipc/query')
@@ -20,7 +22,9 @@ function createWindow() {
     minHeight: 700,
     title: '星火汇速SQL客户端 - Spark NB SQL',
     webPreferences: {
-      preload: join(appPath, 'dist-electron/preload.js'),
+      preload: isDev
+        ? resolve(__dirname, 'preload.js')
+        : join(appPath, 'dist-electron/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,

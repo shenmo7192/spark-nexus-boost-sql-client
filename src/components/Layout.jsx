@@ -1,6 +1,7 @@
 import Header from './Header'
 import Sidebar from './Sidebar'
 import ToastContainer from './ToastContainer'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function Layout({ children }) {
   return (
@@ -13,6 +14,7 @@ export default function Layout({ children }) {
         </main>
       </div>
       <ToastContainer />
+      <ConfirmDialog />
     </div>
   )
 }

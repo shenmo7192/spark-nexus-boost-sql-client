@@ -122,5 +122,24 @@ export const useAppStore = create((set, get) => ({
     set(state => ({
       sheets: state.sheets.map(s => s.id === id ? { ...s, result: null, sql: '' } : s)
     }))
-  }
+  },
+
+  // 确认对话框
+  confirm: null,
+  showConfirm: (message, onConfirm, onCancel) => {
+    set({
+      confirm: {
+        message,
+        onConfirm: () => {
+          get().clearConfirm()
+          onConfirm?.()
+        },
+        onCancel: () => {
+          get().clearConfirm()
+          onCancel?.()
+        }
+      }
+    })
+  },
+  clearConfirm: () => set({ confirm: null })
 }))

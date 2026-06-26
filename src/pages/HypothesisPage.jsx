@@ -3,7 +3,7 @@ import { Plus, Copy, Trash2, Save, BarChart3 } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
 
 export default function HypothesisPage() {
-  const { addToast } = useAppStore()
+  const { addToast, showConfirm } = useAppStore()
   const [scenarios, setScenarios] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [compareIds, setCompareIds] = useState([])
@@ -58,17 +58,18 @@ export default function HypothesisPage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedScenario) return
-    if (!confirm(`确定删除方案 "${selectedScenario.name}" 吗？`)) return
-    try {
-      await window.electronAPI.deleteScenario(selectedScenario.id)
-      await loadScenarios()
-      setSelectedId(null)
-      addToast('方案已删除', 'success')
-    } catch (error) {
-      addToast('删除失败: ' + error.message, 'error')
-    }
+    showConfirm(`确定删除方案 "${selectedScenario.name}" 吗？此操作不可撤销。`, async () => {
+      try {
+        await window.electronAPI.deleteScenario(selectedScenario.id)
+        await loadScenarios()
+        setSelectedId(null)
+        addToast('方案已删除', 'success')
+      } catch (error) {
+        addToast('删除失败: ' + error.message, 'error')
+      }
+    })
   }
 
   const handleSave = async () => {
