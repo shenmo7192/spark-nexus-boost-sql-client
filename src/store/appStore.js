@@ -24,6 +24,10 @@ export const useAppStore = create((set, get) => ({
   databases: [],
   setDatabases: (databases) => set({ databases }),
 
+  // SQL 编辑器草稿（切换页面后保留）
+  sqlDraft: '',
+  setSqlDraft: (sqlDraft) => set({ sqlDraft }),
+
   // 导航
   activePage: 'import',
   setActivePage: (activePage) => set({ activePage }),
@@ -105,6 +109,12 @@ export const useAppStore = create((set, get) => ({
   updateSheetResult: (id, result, sql = '') => {
     set(state => ({
       sheets: state.sheets.map(s => s.id === id ? { ...s, result, sql } : s)
+    }))
+  },
+
+  updateSheetSql: (id, sql) => {
+    set(state => ({
+      sheets: state.sheets.map(s => s.id === id ? { ...s, sql } : s)
     }))
   },
 

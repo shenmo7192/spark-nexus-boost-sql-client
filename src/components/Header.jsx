@@ -34,9 +34,14 @@ export default function Header() {
           <span className="text-[15px] font-semibold leading-tight tracking-tight">
             {appInfo.name}
           </span>
-          <span className="text-[11px] text-surface-400 leading-tight">
-            {appInfo.nameEn}
-          </span>
+          <div className="flex items-center gap-1.5 leading-tight">
+            <span className="text-[11px] text-surface-400">
+              {appInfo.nameEn}
+            </span>
+            <span className="text-[10px] px-1 py-0 rounded bg-surface-800 text-surface-300">
+              v{appInfo.version}
+            </span>
+          </div>
         </div>
       </div>
 

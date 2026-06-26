@@ -8,10 +8,16 @@ const { appStore } = require('../utils/store')
 
 const CURRENT_DB_KEY = 'currentDatabase'
 const EXCEL_EXTENSIONS = ['.xlsx', '.xls', '.xlsm']
+const DB_EXTENSIONS = ['.db', '.sqlite', '.sqlite3']
 
 function isExcelFile(filename) {
   const ext = extname(filename).toLowerCase()
   return EXCEL_EXTENSIONS.includes(ext)
+}
+
+function isDbFile(filename) {
+  const ext = extname(filename).toLowerCase()
+  return DB_EXTENSIONS.includes(ext)
 }
 
 function cleanColumnName(name) {
@@ -167,93 +173,160 @@ function getCurrentDatabase() {
 }
 
 /**
- * 导入 Excel 文件到 SQLite
+ * 生成唯一的本地数据库文件名
+ */
+function generateDbPath(baseName) {
+  let dbName = `${baseName}.db`
+  let dbPath = join(getDbDir(), dbName)
+  let counter = 1
+  while (fs.existsSync(dbPath)) {
+    dbName = `${baseName}_${counter}.db`
+    dbPath = join(getDbDir(), dbName)
+    counter++
+  }
+  return { dbName, dbPath }
+}
+
+/**
+ * 备份原始文件到 uploads 目录
+ */
+function backupOriginal(filePath, originalName) {
+  const uploadDir = getUploadDir()
+  const uploadPath = join(uploadDir, `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}_${sanitizeFilename(originalName)}`)
+  fs.copyFileSync(filePath, uploadPath)
+  return uploadPath
+}
+
+/**
+ * 导入单个 Excel 文件（每个 sheet 对应一张数据表）
+ */
+function importOneExcel(filePath) {
+  const originalName = basename(filePath)
+  const baseName = sanitizeFilename(originalName.replace(/\.[^/.]+$/, ''))
+  backupOriginal(filePath, originalName)
+
+  const { dbName, dbPath } = generateDbPath(baseName)
+
+  const workbook = xlsx.readFile(filePath, { type: 'file' })
+  if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+    throw new Error('Excel 文件为空')
+  }
+
+  const db = new Database(dbPath)
+  try {
+    db.pragma('journal_mode = WAL')
+
+    const importedTables = []
+    const usedTableNames = new Set()
+
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName]
+      const rawData = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: null })
+
+      if (!rawData || rawData.length === 0) continue
+
+      const rawHeaders = rawData[0].map(h => cleanColumnName(h))
+      const headers = dedupeColumnNames(rawHeaders)
+      if (headers.length === 0) continue
+
+      let tableName = cleanColumnName(sheetName)
+      if (!tableName) tableName = 'Sheet1'
+      let tCounter = 1
+      let finalTableName = tableName
+      while (usedTableNames.has(finalTableName)) {
+        finalTableName = `${tableName}_${tCounter++}`
+      }
+      usedTableNames.add(finalTableName)
+
+      const createSql = `CREATE TABLE IF NOT EXISTS "${finalTableName}" (${headers.map(h => `"${h}" TEXT`).join(', ')})`
+      db.exec(createSql)
+
+      const placeholders = headers.map(() => '?').join(', ')
+      const insertSql = `INSERT INTO "${finalTableName}" (${headers.map(h => `"${h}"`).join(', ')}) VALUES (${placeholders})`
+      const insertStmt = db.prepare(insertSql)
+
+      const insertMany = db.transaction((rows) => {
+        for (const row of rows) {
+          insertStmt.run(row)
+        }
+      })
+
+      const dataRows = []
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i]
+        const values = headers.map((_, idx) => {
+          const val = row[idx]
+          return val === null || val === undefined ? '' : String(val)
+        })
+        dataRows.push(values)
+      }
+
+      if (dataRows.length > 0) {
+        insertMany(dataRows)
+      }
+
+      const countRow = db.prepare(`SELECT COUNT(*) as count FROM "${finalTableName}"`).get()
+      importedTables.push({
+        tableName: finalTableName,
+        rowCount: countRow.count,
+        columns: headers
+      })
+    }
+
+    if (importedTables.length === 0) {
+      throw new Error('Excel 文件为空')
+    }
+
+    return {
+      file: originalName,
+      dbName,
+      tables: importedTables,
+      success: true
+    }
+  } finally {
+    db.close()
+  }
+}
+
+/**
+ * 直接导入 SQLite 数据库文件
+ */
+function importOneDb(filePath) {
+  const originalName = basename(filePath)
+  const baseName = sanitizeFilename(originalName.replace(/\.[^/.]+$/, ''))
+  backupOriginal(filePath, originalName)
+
+  const { dbName, dbPath } = generateDbPath(baseName)
+  fs.copyFileSync(filePath, dbPath)
+
+  // 校验并读取表信息
+  const db = new Database(dbPath, { readonly: true })
+  try {
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map(r => r.name)
+    return {
+      file: originalName,
+      dbName,
+      tables: tables.map(name => ({ tableName: name, rowCount: null, columns: [] })),
+      success: true
+    }
+  } finally {
+    db.close()
+  }
+}
+
+/**
+ * 导入数据文件到 SQLite（支持 Excel 与 .db）
  */
 function importExcelFiles(filePaths) {
   const results = []
   for (const filePath of filePaths) {
     try {
-      if (!isExcelFile(filePath)) {
+      if (isExcelFile(filePath)) {
+        results.push(importOneExcel(filePath))
+      } else if (isDbFile(filePath)) {
+        results.push(importOneDb(filePath))
+      } else {
         results.push({ file: basename(filePath), success: false, error: '不支持的文件格式' })
-        continue
-      }
-
-      const originalName = basename(filePath)
-      const baseName = sanitizeFilename(originalName.replace(/\.[^/.]+$/, ''))
-      const uploadDir = getUploadDir()
-      const uploadPath = join(uploadDir, `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}_${sanitizeFilename(originalName)}`)
-      fs.copyFileSync(filePath, uploadPath)
-
-      // 生成数据库文件名，处理重名
-      let dbName = `${baseName}.db`
-      let dbPath = join(getDbDir(), dbName)
-      let counter = 1
-      while (fs.existsSync(dbPath)) {
-        dbName = `${baseName}_${counter}.db`
-        dbPath = join(getDbDir(), dbName)
-        counter++
-      }
-
-      // 读取 Excel
-      const workbook = xlsx.readFile(filePath, { type: 'file' })
-      const firstSheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[firstSheetName]
-      const rawData = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: null })
-
-      if (rawData.length === 0) {
-        results.push({ file: originalName, success: false, error: 'Excel 文件为空' })
-        continue
-      }
-
-      // 清理列名
-      const rawHeaders = rawData[0].map(h => cleanColumnName(h))
-      const headers = dedupeColumnNames(rawHeaders)
-
-      // 创建数据库和表
-      const db = new Database(dbPath)
-      try {
-        db.pragma('journal_mode = WAL')
-
-        const tableName = cleanColumnName(baseName)
-        const createSql = `CREATE TABLE IF NOT EXISTS "${tableName}" (${headers.map(h => `"${h}" TEXT`).join(', ')})`
-        db.exec(createSql)
-
-        // 批量插入
-        const placeholders = headers.map(() => '?').join(', ')
-        const insertSql = `INSERT INTO "${tableName}" (${headers.map(h => `"${h}"`).join(', ')}) VALUES (${placeholders})`
-        const insertStmt = db.prepare(insertSql)
-
-        const insertMany = db.transaction((rows) => {
-          for (const row of rows) {
-            insertStmt.run(row)
-          }
-        })
-
-        const dataRows = []
-        for (let i = 1; i < rawData.length; i++) {
-          const row = rawData[i]
-          const values = headers.map((_, idx) => {
-            const val = row[idx]
-            return val === null || val === undefined ? '' : String(val)
-          })
-          dataRows.push(values)
-        }
-
-        insertMany(dataRows)
-
-        const countRow = db.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`).get()
-        const rowCount = countRow.count
-
-        results.push({
-          file: originalName,
-          dbName,
-          tableName,
-          rowCount,
-          columns: headers,
-          success: true
-        })
-      } finally {
-        db.close()
       }
     } catch (error) {
       results.push({ file: basename(filePath), success: false, error: error.message })

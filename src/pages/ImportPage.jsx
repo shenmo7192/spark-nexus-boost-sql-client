@@ -179,9 +179,9 @@ export default function ImportPage() {
                 <Upload className="w-7 h-7" />
               </div>
               <p className="text-sm font-medium text-surface-700">
-                {isLoading ? '正在导入...' : '点击或拖拽 Excel 文件到此处'}
+                {isLoading ? '正在导入...' : '点击或拖拽 Excel / .db 文件到此处'}
               </p>
-              <p className="text-xs text-surface-500 mt-1">支持 .xlsx / .xls / .xlsm</p>
+              <p className="text-xs text-surface-500 mt-1">支持 .xlsx / .xls / .xlsm / .db / .sqlite / .sqlite3</p>
             </div>
 
             <div className="mt-4 text-xs text-surface-500">

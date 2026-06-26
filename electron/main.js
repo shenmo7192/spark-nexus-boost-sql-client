@@ -111,9 +111,11 @@ ipcMain.handle('db:getCurrent', () => database.getCurrentDatabase())
 ipcMain.handle('dialog:selectExcelFiles', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
-    title: '选择 Excel 文件',
+    title: '选择数据文件',
     filters: [
+      { name: 'Excel / SQLite 数据库', extensions: ['xlsx', 'xls', 'xlsm', 'db', 'sqlite', 'sqlite3'] },
       { name: 'Excel 文件', extensions: ['xlsx', 'xls', 'xlsm'] },
+      { name: 'SQLite 数据库', extensions: ['db', 'sqlite', 'sqlite3'] },
       { name: '所有文件', extensions: ['*'] }
     ]
   })
@@ -143,6 +145,24 @@ ipcMain.handle('hypothesis:update', (_event, id, scenario) => hypothesis.updateS
 ipcMain.handle('hypothesis:delete', (_event, id) => hypothesis.deleteScenario(id))
 ipcMain.handle('hypothesis:compare', (_event, ids) => hypothesis.compareScenarios(ids))
 ipcMain.handle('hypothesis:params', () => hypothesis.getParamsDict())
+
+// 图表导出为 PNG
+ipcMain.handle('chart:saveImage', async (_event, dataUrl, defaultName = 'chart.png') => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '保存图表',
+      defaultPath: defaultName,
+      filters: [{ name: 'PNG 图片', extensions: ['png'] }]
+    })
+    if (result.canceled || !result.filePath) return { success: false, canceled: true }
+
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
+    fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'))
+    return { success: true, filePath: result.filePath }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
 
 // 打开导出目录
 ipcMain.handle('shell:openExportsDir', () => {

@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 文件导出目录
   openExportsDir: () => ipcRenderer.invoke('shell:openExportsDir'),
 
+  // 图表导出
+  saveChartImage: (dataUrl, defaultName) => ipcRenderer.invoke('chart:saveImage', dataUrl, defaultName),
+
   // 监听主进程事件
   onMessage: (callback) => {
     const handler = (_event, message) => callback(message)

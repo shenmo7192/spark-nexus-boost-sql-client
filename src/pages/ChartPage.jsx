@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -62,6 +62,54 @@ function buildChartData(result, config) {
   }
 }
 
+// 自定义数据标签插件：在图表元素上直接绘制名称与数值
+const dataLabelPlugin = {
+  id: 'customDataLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx, data } = chart
+    const dataset = data.datasets[0]
+    if (!dataset) return
+    const meta = chart.getDatasetMeta(0)
+    if (meta.hidden) return
+
+    ctx.save()
+    ctx.font = 'bold 11px sans-serif'
+    ctx.fillStyle = '#374151'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+
+    const type = chart.config.type
+    const labels = data.labels || []
+
+    if (type === 'pie' || type === 'doughnut') {
+      const total = dataset.data.reduce((sum, v) => sum + (Number(v) || 0), 0)
+      meta.data.forEach((arc, i) => {
+        const value = Number(dataset.data[i]) || 0
+        const label = String(labels[i] ?? '')
+        const pct = total ? ((value / total) * 100).toFixed(1) : '0.0'
+        const { x, y } = arc.getCenterPoint(true)
+        ctx.fillText(`${label}: ${value} (${pct}%)`, x, y)
+      })
+    } else if (type === 'line') {
+      meta.data.forEach((pt, i) => {
+        if (pt.skip) return
+        const value = Number(dataset.data[i]) || 0
+        const label = String(labels[i] ?? '')
+        ctx.fillText(`${label}: ${value}`, pt.x, pt.y - 8)
+      })
+    } else {
+      // 柱状图/条形图
+      meta.data.forEach((bar, i) => {
+        const value = Number(dataset.data[i]) || 0
+        const label = String(labels[i] ?? '')
+        ctx.fillText(`${label}: ${value}`, bar.x, bar.y - 4)
+      })
+    }
+
+    ctx.restore()
+  }
+}
+
 const CHART_TYPES = [
   { value: 'bar', label: '柱状图' },
   { value: 'line', label: '折线图' },
@@ -83,6 +131,7 @@ export default function ChartPage() {
   const [savedCharts, setSavedCharts] = useState([])
   // 正在预览的已保存图表（从快照渲染，无需数据源）
   const [previewChart, setPreviewChart] = useState(null)
+  const chartRef = useRef(null)
 
   // 选中第一个可用 sheet
   useEffect(() => {
@@ -163,20 +212,47 @@ export default function ChartPage() {
     persistCharts(savedCharts.filter(c => c.id !== id))
   }
 
-  const renderChart = (data, type, opts = {}) => {
-    if (!data) return null
-    const baseOpts = { maintainAspectRatio: false, ...opts }
-    switch (type) {
-      case 'line': return <Line data={data} options={baseOpts} />
-      case 'pie': return <Pie data={data} options={baseOpts} />
-      case 'doughnut': return <Doughnut data={data} options={baseOpts} />
-      default: return <Bar data={data} options={{ ...baseOpts, plugins: { legend: { display: false } } }} />
+  const getChartOptions = (type, opts = {}) => {
+    const base = {
+      maintainAspectRatio: false,
+      layout: { padding: { top: 24, right: 16, left: 16, bottom: 16 } }
+    }
+    return {
+      ...base,
+      ...opts,
+      plugins: { ...(base.plugins || {}), ...(opts.plugins || {}) }
     }
   }
 
-  const exportChartImage = () => {
-    // 简易提示：浏览器右键保存图片即可
-    addToast('在图表上右键 → 图片另存为，即可导出 PNG', 'info')
+  const renderChart = (data, type, opts = {}, forwardRef = null) => {
+    if (!data) return null
+    const commonProps = { data, plugins: [dataLabelPlugin], ref: forwardRef }
+    switch (type) {
+      case 'line': return <Line {...commonProps} options={getChartOptions(type, opts)} />
+      case 'pie': return <Pie {...commonProps} options={getChartOptions(type, opts)} />
+      case 'doughnut': return <Doughnut {...commonProps} options={getChartOptions(type, opts)} />
+      default: return <Bar {...commonProps} options={getChartOptions(type, { ...opts, plugins: { legend: { display: false }, ...(opts.plugins || {}) } })} />
+    }
+  }
+
+  const exportChartImage = async () => {
+    const chart = chartRef.current
+    if (!chart) {
+      addToast('没有可导出的图表', 'warning')
+      return
+    }
+    try {
+      const dataUrl = chart.toBase64Image()
+      const defaultName = `${previewChart?.name || config.title || currentSheet?.name || 'chart'}.png`
+      const result = await window.electronAPI.saveChartImage(dataUrl, defaultName)
+      if (result.success) {
+        addToast(`图表已保存: ${result.filePath}`, 'success')
+      } else if (!result.canceled) {
+        addToast('保存失败: ' + result.error, 'error')
+      }
+    } catch (error) {
+      addToast('导出失败: ' + error.message, 'error')
+    }
   }
 
   return (
@@ -359,7 +435,7 @@ export default function ChartPage() {
                       title: { display: !!(previewChart?.name || config.title), text: previewChart?.name || config.title },
                       legend: { display: (previewChart?.type || config.type) === 'pie' || (previewChart?.type || config.type) === 'doughnut' }
                     }
-                  })}
+                  }, chartRef)}
                 </div>
               </div>
             )}

@@ -26,13 +26,14 @@ function columnIcon(type) {
 
 export default function SqlPage() {
   const {
-    databases, currentDb, setCurrentDb, addToast,
-    sheets, activeSheetId,
+    databases, currentDb, setCurrentDb, addToast, setDatabases,
+    sheets, activeSheetId, sqlDraft, setSqlDraft,
     addSheet, removeSheet, renameSheet, reorderSheets,
     setActiveSheet, updateSheetResult, ensureSheets
   } = useAppStore()
 
-  const [sqlText, setSqlText] = useState('')
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [templateName, setTemplateName] = useState('')
   const [scenarios, setScenarios] = useState([])
   const [selectedScenario, setSelectedScenario] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
@@ -85,7 +86,7 @@ export default function SqlPage() {
     const view = editorRef.current?.view
     const selection = view?.state.selection.main
     const selectedText = selection && !selection.empty ? view.state.doc.sliceString(selection.from, selection.to) : ''
-    const sqlToRun = selectedText.trim() || sqlText.trim()
+    const sqlToRun = selectedText.trim() || sqlDraft.trim()
     if (!sqlToRun) {
       addToast('请输入 SQL 语句', 'warning')
       return
@@ -132,6 +133,20 @@ export default function SqlPage() {
       } else {
         addToast('SQL 执行成功', 'success')
       }
+
+      // 若执行了 DDL，刷新左侧数据库树
+      if (result.success && /\b(create|drop|alter)\s+table\b/i.test(sqlToRun)) {
+        try {
+          const list = await window.electronAPI.listDatabases()
+          setDatabases(list)
+          setDbInfos(prev => {
+            const next = { ...prev }
+            delete next[currentDb]
+            return next
+          })
+          loadDbInfo(currentDb)
+        } catch (e) {}
+      }
     } catch (error) {
       addToast('执行失败: ' + error.message, 'error')
     } finally {
@@ -142,6 +157,20 @@ export default function SqlPage() {
   useEffect(() => {
     executeRef.current = () => handleExecute(1)
   }, [handleExecute])
+
+  // 全局 F9 执行快捷键（即使编辑器未聚焦也生效，仅在 SQL 页面）
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'F9') {
+        e.preventDefault()
+        if (useAppStore.getState().activePage === 'sql') {
+          executeRef.current()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const currentDbInfo = databases.find(db => db.name === currentDb)
 
@@ -163,10 +192,11 @@ export default function SqlPage() {
       Prec.highest(keymap.of([
         { key: 'Tab', run: (view) => acceptCompletion(view) ? true : true }
       ])),
-      keymap.of([
+      Prec.highest(keymap.of([
         { key: 'Ctrl-Enter', run: () => { executeRef.current(); return true } },
-        { key: 'Cmd-Enter', run: () => { executeRef.current(); return true } }
-      ])
+        { key: 'Cmd-Enter', run: () => { executeRef.current(); return true } },
+        { key: 'F9', run: () => { executeRef.current(); return true } }
+      ]))
     ]
   }, [currentDbInfo, dbInfos, currentDb])
 
@@ -253,20 +283,30 @@ export default function SqlPage() {
       })
       view.focus()
     } else {
-      setSqlText(prev => prev ? `${prev} ${insertStr}` : insertStr)
+      setSqlDraft(prev => prev ? `${prev} ${insertStr}` : insertStr)
     }
   }
 
   const saveTemplate = () => {
-    const name = prompt('请输入模板名称')
-    if (!name) return
-    const newTemplates = [{ name, sql: sqlText }, ...templates]
+    setTemplateName('')
+    setTemplateDialogOpen(true)
+  }
+
+  const confirmSaveTemplate = () => {
+    const name = templateName.trim()
+    if (!name) {
+      addToast('请输入模板名称', 'warning')
+      return
+    }
+    const newTemplates = [{ name, sql: sqlDraft }, ...templates]
     setTemplates(newTemplates)
     saveTemplates(newTemplates)
+    setTemplateDialogOpen(false)
+    setTemplateName('')
     addToast('模板已保存', 'success')
   }
 
-  const loadTemplate = (tpl) => setSqlText(tpl.sql)
+  const loadTemplate = (tpl) => setSqlDraft(tpl.sql)
 
   const deleteTemplate = (idx) => {
     const newTemplates = templates.filter((_, i) => i !== idx)
@@ -501,7 +541,7 @@ export default function SqlPage() {
                 {history.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-1 group">
                     <button
-                      onClick={() => setSqlText(item.sql)}
+                      onClick={() => setSqlDraft(item.sql)}
                       className="flex-1 text-left px-2 py-1 text-[11px] text-surface-600 hover:bg-surface-100 rounded truncate"
                       title={item.sql}
                     >
@@ -527,7 +567,7 @@ export default function SqlPage() {
         <div className="card flex flex-col min-h-0" style={{ flex: '1 1 42%' }}>
           <div className="card-header flex-wrap gap-2">
             <span className="card-title">SQL 编辑器</span>
-            <span className="text-[11px] text-surface-400">Ctrl + Enter 执行</span>
+            <span className="text-[11px] text-surface-400">Ctrl + Enter / F9 执行</span>
             <div className="flex items-center gap-2 ml-auto">
               <select
                 value={selectedScenario}
@@ -547,20 +587,21 @@ export default function SqlPage() {
                 onClick={() => handleExecute(1)}
                 disabled={isExecuting}
                 className="btn-primary py-1 text-xs"
+                title="执行 (F9 / Ctrl+Enter)"
               >
                 <Play className="w-3.5 h-3.5" />
-                {isExecuting ? '执行中' : '执行'}
+                {isExecuting ? '执行中' : '执行 F9'}
               </button>
             </div>
           </div>
           <div className="flex-1 p-0 overflow-hidden min-h-[120px]">
             <CodeMirror
               ref={editorRef}
-              value={sqlText}
+              value={sqlDraft}
               height="100%"
               theme={oneDark}
               extensions={editorExtensions}
-              onChange={(value) => setSqlText(value)}
+              onChange={(value) => setSqlDraft(value)}
               className="h-full"
               basicSetup={{
                 lineNumbers: true,
@@ -646,7 +687,7 @@ export default function SqlPage() {
           </div>
 
           {/* Sheet 内容 */}
-          <div className="flex-1 overflow-auto min-h-0">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {!activeResult ? (
               <div className="flex items-center justify-center h-full text-surface-400 text-sm py-12">
                 执行 SQL 后，结果将输出到当前 Sheet
@@ -657,7 +698,7 @@ export default function SqlPage() {
               </div>
             ) : activeResult.columns ? (
               <>
-                <div className="overflow-auto h-full">
+                <div className="flex-1 overflow-auto min-h-0">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -682,7 +723,7 @@ export default function SqlPage() {
 
                 {/* 分页 */}
                 {activeResult.totalPages && activeResult.totalPages > 1 && (
-                  <div className="flex items-center justify-between px-3 py-2 border-t border-surface-200 bg-white">
+                  <div className="shrink-0 flex items-center justify-between px-3 py-2 border-t border-surface-200 bg-white">
                     <span className="text-xs text-surface-500">
                       第 {activeResult.page} / {activeResult.totalPages} 页，共 {activeResult.totalRows} 行
                     </span>
@@ -758,6 +799,40 @@ export default function SqlPage() {
           </div>
         </div>
       </div>
+
+      {/* 保存模板弹窗 */}
+      {templateDialogOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-surface-200 w-80 p-4">
+            <h3 className="text-sm font-semibold text-surface-800 mb-3">保存 SQL 模板</h3>
+            <input
+              autoFocus
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmSaveTemplate()
+                if (e.key === 'Escape') setTemplateDialogOpen(false)
+              }}
+              placeholder="请输入模板名称"
+              className="form-input w-full mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setTemplateDialogOpen(false)}
+                className="btn-secondary py-1.5 text-xs"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmSaveTemplate}
+                className="btn-primary py-1.5 text-xs"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
