@@ -3,7 +3,7 @@ const xlsx = require('xlsx')
 const { join, basename, extname } = require('path')
 const fs = require('fs')
 
-const { getDbPath, getDbDir, getUploadDir, formatSize, sanitizeFilename } = require('../utils/paths')
+const { getDbPath, getDbDir, formatSize, sanitizeFilename } = require('../utils/paths')
 const { appStore } = require('../utils/store')
 
 const CURRENT_DB_KEY = 'currentDatabase'
@@ -188,22 +188,11 @@ function generateDbPath(baseName) {
 }
 
 /**
- * 备份原始文件到 uploads 目录
- */
-function backupOriginal(filePath, originalName) {
-  const uploadDir = getUploadDir()
-  const uploadPath = join(uploadDir, `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}_${sanitizeFilename(originalName)}`)
-  fs.copyFileSync(filePath, uploadPath)
-  return uploadPath
-}
-
-/**
  * 导入单个 Excel 文件（每个 sheet 对应一张数据表）
  */
 function importOneExcel(filePath) {
   const originalName = basename(filePath)
   const baseName = sanitizeFilename(originalName.replace(/\.[^/.]+$/, ''))
-  backupOriginal(filePath, originalName)
 
   const { dbName, dbPath } = generateDbPath(baseName)
 
@@ -294,7 +283,6 @@ function importOneExcel(filePath) {
 function importOneDb(filePath) {
   const originalName = basename(filePath)
   const baseName = sanitizeFilename(originalName.replace(/\.[^/.]+$/, ''))
-  backupOriginal(filePath, originalName)
 
   const { dbName, dbPath } = generateDbPath(baseName)
   fs.copyFileSync(filePath, dbPath)

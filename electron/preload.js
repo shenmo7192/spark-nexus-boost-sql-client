@@ -33,9 +33,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   compareScenarios: (ids) => ipcRenderer.invoke('hypothesis:compare', ids),
   getParamsDict: () => ipcRenderer.invoke('hypothesis:params'),
 
-  // 文件导出目录
-  openExportsDir: () => ipcRenderer.invoke('shell:openExportsDir'),
-
   // 图表导出
   saveChartImage: (dataUrl, defaultName) => ipcRenderer.invoke('chart:saveImage', dataUrl, defaultName),
 

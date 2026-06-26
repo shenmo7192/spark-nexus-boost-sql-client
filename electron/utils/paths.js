@@ -35,14 +35,6 @@ function getDbPath(dbName) {
   return join(getDbDir(), dbName)
 }
 
-function getUploadDir() {
-  return join(getDataDir(), 'uploads')
-}
-
-function getExportDir() {
-  return join(getDataDir(), 'exports')
-}
-
 function getConfigPath() {
   return join(getDataDir(), 'config_hypothesis.json')
 }
@@ -51,7 +43,7 @@ function getConfigPath() {
  * 确保所有子目录存在
  */
 async function ensureDirs() {
-  const dirs = [getDataDir(), getDbDir(), getUploadDir(), getExportDir()]
+  const dirs = [getDataDir(), getDbDir()]
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
@@ -92,8 +84,6 @@ module.exports = {
   setDataDir,
   getDbDir,
   getDbPath,
-  getUploadDir,
-  getExportDir,
   getConfigPath,
   ensureDirs,
   formatSize,

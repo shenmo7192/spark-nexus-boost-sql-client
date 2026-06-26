@@ -1,7 +1,7 @@
 const ExcelJS = require('exceljs')
 const fs = require('fs')
 const { join } = require('path')
-const { getExportDir } = require('../utils/paths')
+const os = require('os')
 
 /**
  * 导出查询结果到 Excel
@@ -81,8 +81,7 @@ async function exportQueryResults(options) {
       savedPath = exportConfig.savePath
       filename = require('path').basename(downloadPath)
     } else {
-      const exportDir = getExportDir()
-      downloadPath = join(exportDir, filename)
+      downloadPath = join(os.tmpdir(), filename)
     }
     await workbook.xlsx.writeFile(downloadPath)
 

@@ -167,12 +167,3 @@ ipcMain.handle('chart:saveImage', async (_event, dataUrl, defaultName = 'chart.p
     return { success: false, error: error.message }
   }
 })
-
-// 打开导出目录
-ipcMain.handle('shell:openExportsDir', () => {
-  const { getExportDir } = require('./utils/paths')
-  const exportsDir = getExportDir()
-  if (fs.existsSync(exportsDir)) {
-    shell.openPath(exportsDir)
-  }
-})
