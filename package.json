@@ -65,7 +65,6 @@
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
     },
-    "electronDist": "node_modules/electron/dist",
     "win": {
       "target": [
         {
