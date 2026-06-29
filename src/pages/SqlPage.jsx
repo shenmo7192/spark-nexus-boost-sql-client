@@ -40,6 +40,7 @@ export default function SqlPage() {
   const [pageSize, setPageSize] = useState(100)
   const [history, setHistory] = useState([])
   const [templates, setTemplates] = useState([])
+  const [splitResults, setSplitResults] = useState(false)
   const editorRef = useRef(null)
   const executeRef = useRef(() => {})
 
@@ -115,14 +116,21 @@ export default function SqlPage() {
       const targetId = overrideSheetId || activeSheetId
 
       if (result.multi) {
-        // 多条语句：第一条写入目标 sheet，其余各开新 sheet
         const results = result.results
         if (results.length > 0) {
           updateSheetResult(targetId, { ...results[0], exportConfig: result.exportConfig }, results[0].sqlPreview || sqlToRun)
         }
-        for (let i = 1; i < results.length; i++) {
-          const r = results[i]
-          addSheet(`结果${i + 1}`, { ...r, exportConfig: result.exportConfig }, r.sqlPreview || sqlToRun)
+        if (splitResults) {
+          for (let i = 1; i < results.length; i++) {
+            const r = results[i]
+            addSheet(`结果${i + 1}`, { ...r, exportConfig: result.exportConfig }, r.sqlPreview || sqlToRun)
+          }
+        } else {
+          // 默认覆盖模式：最后一个结果留在当前 sheet，其余被覆盖
+          for (let i = 1; i < results.length; i++) {
+            const r = results[i]
+            updateSheetResult(targetId, { ...r, exportConfig: result.exportConfig }, r.sqlPreview || sqlToRun)
+          }
         }
       } else {
         updateSheetResult(targetId, { ...result }, sqlToRun)
@@ -586,6 +594,22 @@ export default function SqlPage() {
               <button onClick={saveTemplate} className="btn-secondary py-1 text-xs">
                 <Save className="w-3.5 h-3.5" /> 存模板
               </button>
+              <label
+                className="flex items-center gap-1.5 cursor-pointer select-none"
+                title={splitResults ? '开启：多条 SQL 结果各自开启新 Sheet' : '关闭：多条 SQL 结果覆盖当前 Sheet'}
+              >
+                <span className="text-[10px] text-surface-400">分Sheet</span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={splitResults}
+                    onChange={(e) => setSplitResults(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-7 h-4 rounded-full transition-colors ${splitResults ? 'bg-primary-500' : 'bg-surface-300'}`} />
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${splitResults ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </div>
+              </label>
               <button
                 onClick={() => handleExecute(1)}
                 disabled={isExecuting}
