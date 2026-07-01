@@ -6,11 +6,12 @@ import { keymap } from '@codemirror/view'
 import { autocompletion, acceptCompletion } from '@codemirror/autocomplete'
 import { Prec } from '@codemirror/state'
 import {
-  Play, Save, Trash2, Download, ChevronLeft, ChevronRight,
+  Play, Save, Trash2, Download,
   History, Database, FileSpreadsheet, Plus, X, Table2,
   ChevronDown, ChevronRight as ChevR, Search, RefreshCw
 } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+import LazyDataTable from '../components/LazyDataTable'
 
 const MAX_HISTORY = 20
 
@@ -37,7 +38,6 @@ export default function SqlPage() {
   const [scenarios, setScenarios] = useState([])
   const [selectedScenario, setSelectedScenario] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
-  const [pageSize, setPageSize] = useState(100)
   const [history, setHistory] = useState([])
   const [templates, setTemplates] = useState([])
   const [splitResults, setSplitResults] = useState(false)
@@ -82,7 +82,7 @@ export default function SqlPage() {
     }
   }
 
-  const handleExecute = async (gotoPage = 1, overrideSheetId = null) => {
+  const handleExecute = async (overrideSheetId = null) => {
     // 优先执行选中的 SQL，无选中则执行全部
     const view = editorRef.current?.view
     const selection = view?.state.selection.main
@@ -102,9 +102,7 @@ export default function SqlPage() {
       const result = await window.electronAPI.runQuery({
         sql: sqlToRun,
         dbName: currentDb,
-        scenarioId: selectedScenario || undefined,
-        page: gotoPage,
-        pageSize
+        scenarioId: selectedScenario || undefined
       })
 
       // 保存历史
@@ -163,7 +161,7 @@ export default function SqlPage() {
   }
 
   useEffect(() => {
-    executeRef.current = () => handleExecute(1)
+    executeRef.current = () => handleExecute()
   }, [handleExecute])
 
   // 全局 F9 执行快捷键（即使编辑器未聚焦也生效，仅在 SQL 页面）
@@ -377,33 +375,6 @@ export default function SqlPage() {
     dragSheetId.current = null
   }
 
-  const handlePageChange = async (newPage) => {
-    if (!activeSheet || !activeSheet.sql) return
-    // 用该 sheet 保存的 SQL 重新执行到指定页
-    await runPagedQuery(activeSheet, newPage)
-  }
-
-  const runPagedQuery = async (sheet, gotoPage) => {
-    if (!currentDb) return
-    setIsExecuting(true)
-    try {
-      const result = await window.electronAPI.runQuery({
-        sql: sheet.sql,
-        dbName: currentDb,
-        scenarioId: selectedScenario || undefined,
-        page: gotoPage,
-        pageSize
-      })
-      if (!result.multi) {
-        updateSheetResult(sheet.id, { ...result }, sheet.sql)
-      }
-    } catch (error) {
-      addToast('执行失败: ' + error.message, 'error')
-    } finally {
-      setIsExecuting(false)
-    }
-  }
-
   const filteredNavDbs = databases
 
   return (
@@ -611,7 +582,7 @@ export default function SqlPage() {
                 </div>
               </label>
               <button
-                onClick={() => handleExecute(1)}
+                onClick={() => handleExecute()}
                 disabled={isExecuting}
                 className="btn-primary py-1 text-xs"
                 title="执行 (F9 / Ctrl+Enter)"
@@ -725,63 +696,9 @@ export default function SqlPage() {
               </div>
             ) : activeResult.columns ? (
               <>
-                <div className="flex-1 overflow-auto min-h-0 min-w-0">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th className="w-10 text-center text-surface-400">#</th>
-                        {activeResult.columns.map(col => (
-                          <th key={col}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeResult.rows.map((row, idx) => (
-                        <tr key={idx}>
-                          <td className="text-center text-surface-400 text-xs">{idx + 1}</td>
-                          {activeResult.columns.map(col => (
-                            <td key={col}>{row[col] === null || row[col] === undefined ? '' : String(row[col])}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="flex-1 overflow-hidden min-h-0 min-w-0">
+                  <LazyDataTable columns={activeResult.columns} rows={activeResult.rows} />
                 </div>
-
-                {/* 分页 */}
-                {activeResult.totalPages && activeResult.totalPages > 1 && (
-                  <div className="shrink-0 flex items-center justify-between px-3 py-2 border-t border-surface-200 bg-white">
-                    <span className="text-xs text-surface-500">
-                      第 {activeResult.page} / {activeResult.totalPages} 页，共 {activeResult.totalRows} 行
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handlePageChange(activeResult.page - 1)}
-                        disabled={activeResult.page <= 1}
-                        className="btn-ghost p-1"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <select
-                        value={pageSize}
-                        onChange={(e) => { setPageSize(Number(e.target.value)); if (activeSheet) runPagedQuery(activeSheet, 1) }}
-                        className="form-input w-20 py-1 text-xs"
-                      >
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                        <option value={200}>200</option>
-                        <option value={500}>500</option>
-                      </select>
-                      <button
-                        onClick={() => handlePageChange(activeResult.page + 1)}
-                        disabled={activeResult.page >= activeResult.totalPages}
-                        className="btn-ghost p-1"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
               <div className="p-4 text-sm text-surface-600">

@@ -96,6 +96,31 @@
   .data-table tbody tr:hover {
     @apply bg-surface-50;
   }
+
+  .lazy-data-table {
+    @apply w-full text-sm border-collapse;
+    table-layout: fixed;
+  }
+
+  .lazy-data-table th {
+    @apply bg-surface-50 text-left text-xs font-semibold text-surface-600 px-3 border-b border-surface-200 whitespace-nowrap overflow-hidden text-ellipsis;
+    height: 36px;
+    line-height: 36px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .lazy-data-table td {
+    @apply px-3 border-b border-surface-100 text-surface-700 whitespace-nowrap overflow-hidden text-ellipsis;
+    height: 36px;
+    line-height: 36px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .lazy-data-table tbody tr:hover {
+    @apply bg-surface-50;
+  }
 }
 
 /* CodeMirror 自定义 */

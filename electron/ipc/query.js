@@ -62,7 +62,7 @@ function parseExportStatements(statements) {
 /**
  * 执行单条 SQL
  */
-function executeSingle(dbPath, sql, page = 1, pageSize = 100) {
+function executeSingle(dbPath, sql) {
   const db = new Database(dbPath, { readonly: true })
   try {
     const upper = sql.trim().toUpperCase()
@@ -70,21 +70,14 @@ function executeSingle(dbPath, sql, page = 1, pageSize = 100) {
 
     if (isSelect || upper.startsWith('PRAGMA')) {
       const stmt = db.prepare(sql)
-      const allRows = stmt.all()
-      const total = allRows.length
-      const start = (page - 1) * pageSize
-      const end = start + pageSize
-      const rows = allRows.slice(start, end)
-      const columns = allRows.length > 0 ? Object.keys(allRows[0]) : []
+      const rows = stmt.all()
+      const columns = rows.length > 0 ? Object.keys(rows[0]) : []
 
       return {
         success: true,
         columns,
         rows,
-        totalRows: total,
-        page,
-        pageSize,
-        totalPages: Math.ceil(total / pageSize) || 1,
+        totalRows: rows.length,
         sql
       }
     } else {
@@ -116,10 +109,10 @@ function executeSingle(dbPath, sql, page = 1, pageSize = 100) {
 
 /**
  * 执行 SQL 查询
- * options: { sql, dbName?, scenarioId?, page?, pageSize? }
+ * options: { sql, dbName?, scenarioId? }
  */
 function runQuery(options) {
-  const { sql, scenarioId, page = 1, pageSize = 100 } = options
+  const { sql, scenarioId } = options
   let dbName = options.dbName
 
   if (!dbName) {
@@ -156,7 +149,7 @@ function runQuery(options) {
 
   if (actualStatements.length === 1) {
     const finalSql = params ? replaceParams(actualStatements[0], params) : actualStatements[0]
-    const result = executeSingle(dbPath, finalSql, page, pageSize)
+    const result = executeSingle(dbPath, finalSql)
     if (scenarioName) result.scenarioName = scenarioName
     if (exportConfig.filename) {
       result.exportConfig = {
@@ -173,7 +166,7 @@ function runQuery(options) {
   for (let i = 0; i < actualStatements.length; i++) {
     const stmt = actualStatements[i]
     const finalSql = params ? replaceParams(stmt, params) : stmt
-    const r = executeSingle(dbPath, finalSql, 1, 100000)
+    const r = executeSingle(dbPath, finalSql)
     if (scenarioName) r.scenarioName = scenarioName
     r.sqlPreview = stmt.length > 80 ? stmt.substring(0, 80) + '...' : stmt
     results.push(r)
