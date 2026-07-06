@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Excel 导入
   importExcelFiles: (filePaths) => ipcRenderer.invoke('excel:import', filePaths),
   selectExcelFiles: () => ipcRenderer.invoke('dialog:selectExcelFiles'),
+  onImportProgress: (callback) => {
+    const handler = (_event, message) => callback(message)
+    ipcRenderer.on('excel:importProgress', handler)
+    return () => ipcRenderer.removeListener('excel:importProgress', handler)
+  },
 
   // SQL 查询
   runQuery: (options) => ipcRenderer.invoke('query:run', options),

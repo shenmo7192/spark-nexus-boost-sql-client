@@ -35,6 +35,21 @@ function getDbPath(dbName) {
   return join(getDbDir(), dbName)
 }
 
+/**
+ * 生成唯一的本地数据库文件名
+ */
+function generateDbPath(baseName) {
+  let dbName = `${baseName}.db`
+  let dbPath = join(getDbDir(), dbName)
+  let counter = 1
+  while (fs.existsSync(dbPath)) {
+    dbName = `${baseName}_${counter}.db`
+    dbPath = join(getDbDir(), dbName)
+    counter++
+  }
+  return { dbName, dbPath }
+}
+
 function getConfigPath() {
   return join(getDataDir(), 'config_hypothesis.json')
 }
@@ -84,6 +99,7 @@ module.exports = {
   setDataDir,
   getDbDir,
   getDbPath,
+  generateDbPath,
   getConfigPath,
   ensureDirs,
   formatSize,

@@ -63,6 +63,7 @@
       "build/**/*"
     ],
     "extraResources": [],
+    "asarUnpack": ["dist-electron/workers/**/*"],
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
     },

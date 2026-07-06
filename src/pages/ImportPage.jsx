@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Upload, Database, Trash2, FileSpreadsheet, Table2, RefreshCw } from 'lucide-react'
+import { Upload, Database, Trash2, FileSpreadsheet, Table2, RefreshCw, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+
+const statusMap = {
+  queued: { label: '等待中', icon: Clock, className: 'bg-surface-100 text-surface-600' },
+  processing: { label: '转换中', icon: Loader2, className: 'bg-primary-100 text-primary-600' },
+  done: { label: '完成', icon: CheckCircle, className: 'bg-green-100 text-green-600' },
+  error: { label: '失败', icon: XCircle, className: 'bg-red-100 text-red-600' }
+}
 
 export default function ImportPage() {
   const { databases, setDatabases, currentDb, setCurrentDb, addToast, dataDir } = useAppStore()
@@ -10,6 +17,7 @@ export default function ImportPage() {
   const [previewTable, setPreviewTable] = useState(null)
   const [previewData, setPreviewData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [importQueue, setImportQueue] = useState([])
 
   const loadDatabases = useCallback(async () => {
     try {
@@ -33,6 +41,39 @@ export default function ImportPage() {
       setPreviewData(null)
     }
   }, [selectedDb])
+
+  useEffect(() => {
+    if (!window.electronAPI.onImportProgress) return
+
+    const unsubscribe = window.electronAPI.onImportProgress((msg) => {
+      setImportQueue(prev => {
+        const idx = prev.findIndex(t => t.id === msg.taskId)
+        const next = [...prev]
+        if (idx >= 0) {
+          next[idx] = {
+            ...next[idx],
+            status: msg.status || next[idx].status,
+            message: msg.message || next[idx].message,
+            result: msg.result || next[idx].result,
+            error: msg.error || next[idx].error
+          }
+        } else if (msg.type === 'queued') {
+          next.push({
+            id: msg.taskId,
+            file: msg.file,
+            dbName: msg.dbName,
+            status: msg.status || 'queued',
+            message: msg.message || '等待中',
+            result: null,
+            error: null
+          })
+        }
+        return next
+      })
+    })
+
+    return unsubscribe
+  }, [])
 
   const loadDbInfo = async (dbName) => {
     try {
@@ -63,16 +104,22 @@ export default function ImportPage() {
       const result = await window.electronAPI.importExcelFiles(filePaths)
       let successCount = 0
       let errorMsg = ''
+      let firstSuccessDbName = null
+
       for (const item of result.results) {
         if (item.success) {
           successCount++
-          if (item.dbName === result.results.find(r => r.success)?.dbName) {
-            setCurrentDb(item.dbName)
-            await window.electronAPI.setCurrentDatabase(item.dbName)
+          if (!firstSuccessDbName) {
+            firstSuccessDbName = item.dbName
           }
         } else {
           errorMsg += `${item.file}: ${item.error}; `
         }
+      }
+
+      if (firstSuccessDbName) {
+        setCurrentDb(firstSuccessDbName)
+        await window.electronAPI.setCurrentDatabase(firstSuccessDbName)
       }
 
       await loadDatabases()
@@ -142,6 +189,8 @@ export default function ImportPage() {
     }
   }
 
+  const activeCount = importQueue.filter(t => t.status === 'queued' || t.status === 'processing').length
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -179,7 +228,7 @@ export default function ImportPage() {
                 <Upload className="w-7 h-7" />
               </div>
               <p className="text-sm font-medium text-surface-700">
-                {isLoading ? '正在导入...' : '点击或拖拽 Excel / .db 文件到此处'}
+                {isLoading ? `正在导入，还有 ${activeCount} 个文件在队列...` : '点击或拖拽 Excel / .db 文件到此处'}
               </p>
               <p className="text-xs text-surface-500 mt-1">支持 .xlsx / .xls / .xlsm / .db / .sqlite / .sqlite3</p>
             </div>
@@ -240,6 +289,42 @@ export default function ImportPage() {
           </div>
         </div>
       </div>
+
+      {/* 导入队列 */}
+      {importQueue.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">导入队列</span>
+            <span className="text-xs text-surface-500">
+              {activeCount > 0 ? `还有 ${activeCount} 个文件在处理` : '全部处理完毕'}
+            </span>
+          </div>
+          <div className="max-h-[240px] overflow-auto divide-y divide-surface-100">
+            {importQueue.map(task => {
+              const meta = statusMap[task.status] || statusMap.queued
+              const Icon = meta.icon
+              return (
+                <div key={task.id} className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${meta.className}`}>
+                      <Icon className={`w-4 h-4 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-surface-800 truncate">{task.file}</p>
+                      <p className="text-xs text-surface-500 truncate">
+                        {task.status === 'done' && task.result
+                          ? `已生成 ${task.result.dbName}，共 ${task.result.tables.length} 张表`
+                          : task.message}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`badge text-[10px] ${meta.className}`}>{meta.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 表结构预览 */}
       {dbInfo && (

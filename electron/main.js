@@ -10,6 +10,7 @@ const database = require('./ipc/database')
 const query = require('./ipc/query')
 const hypothesis = require('./ipc/hypothesis')
 const exportIpc = require('./ipc/export')
+const { importQueue } = require('./ipc/importQueue')
 const { getDataDir, ensureDirs } = require('./utils/paths')
 
 let mainWindow = null
@@ -50,6 +51,8 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  importQueue.setMainWindow(mainWindow)
 
   // 监听 preload 错误
   mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
