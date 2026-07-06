@@ -34,8 +34,21 @@ jobs:
           node-version: 20
           cache: npm
 
-      # 缓存 electron 与 electron-builder 工具二进制下载，避免重复拉取
-      - name: Cache electron binaries
+      # Linux: 安装 fpm/xz/dpkg 等原生依赖；
+      # electron-builder v26 默认会下载与 runner arch 匹配的 fpm 1.17.0，
+      # 但 xz-utils / dpkg-dev 仍是系统依赖，且可作为 USE_SYSTEM_FPM 兜底
+      - name: Setup Linux build deps
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xz-utils dpkg-dev libarchive-tools \
+            libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
+            xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
+            libgbm1 libasound2
+
+      # 缓存 electron 与 electron-builder 工具二进制下载（按 arch 分桶）
+      - name: Cache electron/builder binaries
         uses: actions/cache@v4
         with:
           path: |
@@ -43,7 +56,9 @@ jobs:
             ~/.cache/electron-builder
             ~/AppData/Local/electron/Cache
             ~/AppData/Local/electron-builder/Cache
-          key: ${{ runner.os }}-${{ runner.arch }}-electron-22.3.27
+          key: ${{ runner.os }}-${{ runner.arch }}-eb26-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-eb26-
 
       - name: Install dependencies
         env:
@@ -53,6 +68,13 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Debug runner arch
+        if: matrix.target == 'linux'
+        run: |
+          echo "uname -m: $(uname -m)"
+          echo "node arch: $(node -p process.arch)"
+          echo "fpm cache dir:" && ls -la ~/.cache/electron-builder/fpm/ 2>/dev/null || true
 
       - name: Package
         env:
@@ -65,16 +87,12 @@ jobs:
         if: matrix.target == 'linux'
         run: |
           set -e
-          for f in release/*.AppImage; do
-            [ -f "$f" ] || continue
-            echo "==> $f"
-            # AppImage 是 squashfs，用 runtime 检查产物不可行，直接看 deb 内的 chrome-sandbox
-          done
           for d in release/*.deb; do
             [ -f "$d" ] || continue
             echo "==> $d"
             tmpdir=$(mktemp -d)
             dpkg-deb -x "$d" "$tmpdir"
+            # 找 chrome-sandbox 与主程序二进制，断言 ELF 架构与目标 arch 匹配
             bin=$(find "$tmpdir" -type f \( -name 'chrome-sandbox' -o -name '星火汇速SQL客户端' \) | head -1)
             if [ -n "$bin" ]; then
               file "$bin"
@@ -82,6 +100,16 @@ jobs:
                 file "$bin" | grep -q "aarch64" || { echo "ERROR: arm64 deb contains non-aarch64 binary"; exit 1; }
               else
                 file "$bin" | grep -q "x86-64" || { echo "ERROR: x64 deb contains non-x86-64 binary"; exit 1; }
+              fi
+            fi
+            # 同时校验 better_sqlite3.node 的架构
+            node=$(find "$tmpdir" -name 'better_sqlite3.node' | head -1)
+            if [ -n "$node" ]; then
+              file "$node"
+              if [ "${{ matrix.arch }}" = "arm64" ]; then
+                file "$node" | grep -q "aarch64" || { echo "ERROR: arm64 deb contains non-aarch64 .node"; exit 1; }
+              else
+                file "$node" | grep -q "x86-64" || { echo "ERROR: x64 deb contains non-x86-64 .node"; exit 1; }
               fi
             fi
             rm -rf "$tmpdir"
