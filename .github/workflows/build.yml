@@ -45,7 +45,7 @@ jobs:
             xz-utils dpkg-dev libarchive-tools \
             libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
             xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 \
-            libgbm1 libasound2
+            libgbm1 
 
       # 缓存 electron 与 electron-builder 工具二进制下载（按 arch 分桶）
       - name: Cache electron/builder binaries
