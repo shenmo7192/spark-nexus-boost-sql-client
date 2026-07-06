@@ -63,7 +63,8 @@ export default function Sidebar() {
         <div className="p-3 border-t border-surface-700">
           <div className="text-[10px] text-surface-500 leading-relaxed">
             <p>Spark Nexus Boost SQL</p>
-            <p>王楚楚 & 欧阳云睿 · 星火计划 AI赋能智慧办公</p>
+            <p>王楚楚 & 欧阳云睿</p>
+            <p>星火计划 AI赋能智慧办公</p>
           </div>
         </div>
       )}

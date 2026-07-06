@@ -41,6 +41,9 @@ jobs:
         run: npm run build
 
       - name: Package
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
         run: npx electron-builder --${{ matrix.target }} --${{ matrix.arch }}
 
       - name: Upload artifacts

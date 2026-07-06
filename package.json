@@ -6,6 +6,9 @@
   "main": "dist-electron/main.js",
   "author": "Spark Nexus Boost",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0 <21.0.0"
+  },
   "type": "commonjs",
   "scripts": {
     "dev": "vite",
