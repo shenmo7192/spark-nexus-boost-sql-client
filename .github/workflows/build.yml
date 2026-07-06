@@ -3,9 +3,6 @@ name: Build
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
     tags:
       - 'v*'
 
@@ -49,7 +46,7 @@ jobs:
             libgbm1
 
       # Windows: 确保临时目录在 C 盘，避免某些工具尝试写 D: 导致 ENOENT
-      - name: Ensure temp dir on C:
+      - name: Ensure temp dir on C drive
         if: matrix.target == 'win'
         run: |
           mkdir -Force C:\tmp
