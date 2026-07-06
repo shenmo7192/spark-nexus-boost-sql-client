@@ -18,7 +18,8 @@
     "check:offline": "node scripts/check-offline.mjs",
     "dist": "npm run build && electron-builder",
     "dist:win": "node scripts/build-win.mjs",
-    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:linux": "npm run build && electron-builder --linux --x64",
+    "dist:linux:arm64": "npm run build && electron-builder --linux --arm64",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -64,6 +65,7 @@
     ],
     "extraResources": [],
     "asarUnpack": ["dist-electron/workers/**/*"],
+    "npmRebuild": true,
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
     },
