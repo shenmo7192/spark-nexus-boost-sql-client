@@ -8,7 +8,7 @@ export const useAppStore = create((set, get) => ({
     name: '星火汇速SQL客户端',
     nameEn: 'Spark NB SQL',
     fullNameEn: 'Spark Nexus Boost SQL',
-    version: '1.2.1'
+    version: '1.2.2'
   },
   setAppInfo: (appInfo) => set({ appInfo }),
 

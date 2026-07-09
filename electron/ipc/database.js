@@ -81,13 +81,16 @@ function getTablePreview(dbName, tableName, limit = 20) {
 
   const db = new Database(dbPath, { readonly: true })
   try {
-    const columns = db.prepare(`PRAGMA table_info("${tableName}")`).all().map(c => c.name)
+    const colInfos = db.prepare(`PRAGMA table_info("${tableName}")`).all()
+    const columns = colInfos.map(c => c.name)
+    const columnTypes = colInfos.map(c => c.type || 'TEXT')
     const rows = db.prepare(`SELECT * FROM "${tableName}" LIMIT ${limit}`).all()
     const countRow = db.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`).get()
     return {
       dbName,
       tableName,
       columns,
+      columnTypes,
       rows,
       totalRows: countRow.count,
       limit

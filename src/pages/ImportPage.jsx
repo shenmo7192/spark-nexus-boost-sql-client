@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Upload, Database, Trash2, FileSpreadsheet, Table2, RefreshCw, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+import { formatCellValue } from '../lib/format'
 
 const statusMap = {
   queued: { label: '等待中', icon: Clock, className: 'bg-surface-100 text-surface-600' },
@@ -368,8 +369,8 @@ export default function ImportPage() {
                   <tbody>
                     {previewData.rows.map((row, idx) => (
                       <tr key={idx}>
-                        {previewData.columns.map(col => (
-                          <td key={col}>{row[col] === null || row[col] === undefined ? '' : String(row[col])}</td>
+                        {previewData.columns.map((col, colIdx) => (
+                          <td key={col}>{formatCellValue(row[col], previewData.columnTypes?.[colIdx])}</td>
                         ))}
                       </tr>
                     ))}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { formatCellValue } from '../lib/format'
 
 const ROW_HEIGHT = 36
 const BUFFER = 10
@@ -9,7 +10,7 @@ const MAX_COL_WIDTH = 300
  * 懒加载数据表格
  * 通过仅渲染可视区域行来优化大数据量下的性能，同时保留全部数据的滚动高度。
  */
-export default function LazyDataTable({ columns, rows }) {
+export default function LazyDataTable({ columns, rows, columnTypes = [] }) {
   const bodyRef = useRef(null)
   const headerRef = useRef(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -106,9 +107,10 @@ export default function LazyDataTable({ columns, rows }) {
                 return (
                   <tr key={realIdx} style={{ height: ROW_HEIGHT }}>
                     <td className="text-center text-surface-400 text-xs">{realIdx + 1}</td>
-                    {safeColumns.map(col => {
+                    {safeColumns.map((col, i) => {
                       const value = row[col]
-                      const text = value === null || value === undefined ? '' : String(value)
+                      const type = columnTypes[i] || ''
+                      const text = formatCellValue(value, type)
                       return (
                         <td key={col} title={text}>
                           {text}

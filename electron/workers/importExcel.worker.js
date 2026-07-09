@@ -39,6 +39,20 @@ function dedupeColumnNames(names) {
   })
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function formatDateTime(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+}
+
+function excelValueToString(val) {
+  if (val === null || val === undefined) return ''
+  if (val instanceof Date) return formatDateTime(val)
+  return String(val)
+}
+
 async function run() {
   try {
     sendProgress('reading', { message: '正在读取 Excel...' })
@@ -94,10 +108,7 @@ async function run() {
         const dataRows = []
         for (let i = 1; i < rawData.length; i++) {
           const row = rawData[i]
-          const values = headers.map((_, idx) => {
-            const val = row[idx]
-            return val === null || val === undefined ? '' : String(val)
-          })
+          const values = headers.map((_, idx) => excelValueToString(row[idx]))
           dataRows.push(values)
         }
 

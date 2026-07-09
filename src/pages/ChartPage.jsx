@@ -14,6 +14,7 @@ import {
 import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2'
 import { BarChart3, Plus, Trash2, Table2, Download } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+import { formatCellValue } from '../lib/format'
 
 ChartJS.register(
   CategoryScale,
@@ -63,21 +64,28 @@ function buildChartData(result, config) {
   const { xColumn, yColumn, type, aggregate, aggregateMethod } = config
   if (!xColumn || !yColumn) return null
 
+  const columnTypeMap = {}
+  if (result.columnTypes) {
+    result.columns.forEach((c, i) => { columnTypeMap[c] = result.columnTypes[i] })
+  }
+
   let labels, data
   if (aggregate) {
     const groups = new Map()
     result.rows.forEach(r => {
-      const key = String(r[xColumn] ?? '')
+      const key = formatCellValue(r[xColumn], columnTypeMap[xColumn]) ?? ''
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key).push(r[yColumn])
     })
     labels = Array.from(groups.keys())
     data = labels.map(label => aggregateValue(groups.get(label), aggregateMethod || 'sum'))
   } else {
-    labels = result.rows.map(r => r[xColumn])
+    labels = result.rows.map(r => formatCellValue(r[xColumn], columnTypeMap[xColumn]))
     data = result.rows.map(r => {
       const v = r[yColumn]
-      return typeof v === 'number' ? v : parseFloat(v) || 0
+      if (typeof v === 'number') return v
+      if (v instanceof Date) return v.getTime()
+      return parseFloat(v) || 0
     })
   }
 

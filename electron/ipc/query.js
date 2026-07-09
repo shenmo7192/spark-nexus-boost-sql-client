@@ -70,12 +70,15 @@ function executeSingle(dbPath, sql) {
 
     if (isSelect || upper.startsWith('PRAGMA')) {
       const stmt = db.prepare(sql)
+      const colInfos = stmt.columns()
       const rows = stmt.all()
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : []
+      const columns = colInfos.map(c => c.name)
+      const columnTypes = colInfos.map(c => c.type || '')
 
       return {
         success: true,
         columns,
+        columnTypes,
         rows,
         totalRows: rows.length,
         sql

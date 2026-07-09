@@ -697,7 +697,7 @@ export default function SqlPage() {
             ) : activeResult.columns ? (
               <>
                 <div className="flex-1 overflow-hidden min-h-0 min-w-0">
-                  <LazyDataTable columns={activeResult.columns} rows={activeResult.rows} />
+                  <LazyDataTable columns={activeResult.columns} rows={activeResult.rows} columnTypes={activeResult.columnTypes} />
                 </div>
               </>
             ) : (
